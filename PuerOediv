@@ -1,0 +1,764 @@
+app = customtkinter.CTk()
+app.title("GanJingWorld Reup Video")
+app.geometry("350x420")
+
+total = 0
+
+def check_status():
+    d = 0
+    if len(list_userpass)==0:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập file account\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    try:
+        check = int(delay.get())
+    except:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập đúng định dạng của delay\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    try:
+        check = int(change_account.get())
+    except Exception as e:
+        print(str(e))
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập đúng định dạng của số bài đăng\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    if d>0: return False
+    else: return True
+
+if os.path.exists("./SaveData")==False: os.mkdir("./SaveData")  
+if os.path.exists("./ImageData")==False: os.mkdir("./ImageData")  
+if os.path.exists("./VideoData")==False: os.mkdir("./VideoData")  
+
+list_token = []
+
+global_proxy = {
+    "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
+    "https":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
+}
+
+
+def convert_cookie_to_netscape(input_file, output_file):
+    try:
+        with open(input_file, 'r') as f:
+            cookies = f.readlines()
+        
+        with open(output_file, 'w') as f:
+            f.write('# Netscape HTTP Cookie File\n')
+            f.write('# https://curl.haxx.se/rfc/cookie_spec.html\n')
+            f.write('# This is a generated file!  Do not edit.\n\n')
+            
+            for cookie in cookies:
+                if cookie.strip() and not cookie.startswith('#'):
+                    name, value = cookie.strip().split('=', 1)
+                    f.write(f'.youtube.com\tTRUE\t/\tTRUE\t2597573456\t{name}\t{value}\n')
+                    
+        print(f"Converted cookies saved to {output_file}")
+        return True
+        
+    except Exception as e:
+        print(f"Error converting cookies: {str(e)}")
+        return False
+convert_cookie_to_netscape('ck.txt', 'cookies.txt')
+
+def download_video(url, email, password):
+    name_file = str(time.time())
+    aaa = f'./VideoData/{name_file}.mp4'
+    
+    try:
+        ydl_opts = {
+        'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best',
+        'outtmpl': aaa,
+        'ffmpeg_location': './ffmpeg/bin/ffmpeg.exe',
+        'quiet': True,
+        'verbose': True,
+        'ignoreerrors': True,
+        'restrictfilenames': False,
+        'noplaylist': True,
+        'windows_filenames': True,
+        'updatetime': False,
+        'writeinfojson': False,
+        'postprocessors': [],
+        'overwrites': True,
+        'merge_output_format': 'mp4',
+        "cookiefile": "cookies.txt",
+        'nocheckcertificate': True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            filename = ydl.prepare_filename(ydl.extract_info(url, download=False))
+            ydl.download([url])
+        download_path = "./VideoData"
+        for filename in os.listdir(download_path):
+            if name_file in filename and filename.endswith('.mp4'):
+                final_path = os.path.join(download_path, filename)
+                return final_path
+            
+        return None
+            
+    except Exception as e:
+        tb = e.__traceback__
+        error_message = f"Exception: {e} | "
+        while tb is not None:
+            filename = tb.tb_frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function_name = tb.tb_frame.f_code.co_name
+            error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+            tb = tb.tb_next
+        save_error_to_file(error_message)
+        return None
+
+def remove_hashtags(text):
+    return re.sub(r'#\S+', '', text)
+
+def save_image(url):
+    try:
+        response = requests.get(url, stream=True)
+
+        if response.status_code == 200:
+            aaa = f'./ImageData/{time.time()}.png'
+            with open(aaa, 'wb') as f:
+                f.write(response.content)
+            return aaa
+    except: return None
+
+list_login_token = []
+
+def get_login_token():
+    global list_login_token
+    if len(list_login_token) != 0:
+        return random.choice(list_login_token)
+    else:
+        h = {
+            'Accept-Encoding':'gzip, deflate, br',
+            'Accept-Language':'vi,en-US;q=0.9,en;q=0.8',
+            'Content-Length':'2',
+            'Content-Type':'application/json',
+            'Gjw-Did':'1gjmbv5jtr91QJHTAAVmXmU5O12r0d',
+            'Gjw-Sign':'ca57245fae3b3a03d6eaadb1cef531b4',
+            'Gjw-Ts':'1710510510579',
+            'Origin':'https://www.ganjingworld.com',
+            'Referer':'https://www.ganjingworld.com/',
+            'Sec-Ch-Ua':'"Chromium";v="122", "Not(A:Brand";v="24", "Microsoft Edge";v="122"',
+            'Sec-Ch-Ua-Mobile':'?0',
+            'Sec-Ch-Ua-Platform':'"Windows"',
+            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+            'X-Cdk-Dsid':'1b9be33b-2263-79b6-7da2-6fb5f24efc55',
+            'X-Cdk-Lrtm':'2024-03-15 20:48:30',
+        }
+
+        token = requests.post("https://gw.ganjingworld.com/v1.0c/auth/guest/registration", json={}, headers=h).json()["data"]["accessToken"]
+        list_login_token.append(token)
+        return token
+    
+
+def get_content(data, dem):
+    global global_proxy
+    
+    # Check if URL has valid channel format
+    if not any(x in data for x in ['/channel/', '/c/', '/user/', '/@']):
+        save_error_to_file("Invalid YouTube channel URL format")
+        return None
+        
+    ydl_opts = {
+        'quiet': True,
+        'extract_flat': True,
+        'force_generic_extractor': False,
+        'ignoreerrors': True
+    }
+    
+    try:
+        # Extract channel info
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            if '/videos' not in data:
+                channel_id = data.split('/')[-1].split('?')[0]
+                data = data + '/videos'
+            else:
+                channel_id = data.split('/')[-2]
+            channel_info = ydl.extract_info(data, download=False)
+            save_path = f"./SaveData/{channel_id}.txt"
+            if not os.path.isfile(save_path):
+                open(save_path, 'a', encoding="utf-8").close()
+            
+            existing_ids = [i.strip("\n") for i in open(save_path, "r", encoding="utf-8").readlines()]
+            video_links = []
+            
+            # Get videos
+            if 'entries' not in channel_info:
+                save_error_to_file("No videos found in channel")
+                return None
+                
+            new_videos = [video for video in channel_info['entries'] 
+                         if video['id'] not in existing_ids]
+            
+            # Process requested number of videos
+            for video in new_videos[:dem]:
+                video_id = video['id']
+                video_url = f"https://www.youtube.com/watch?v={video_id}"
+                
+                # Get detailed video info
+                video_info = ydl.extract_info(video_url, download=False)
+                
+                video_links.append([
+                    video_url,
+                    video_info.get('title', ''),
+                    video_info.get('description', ''),
+                    video_info.get('thumbnail', '')
+                ])
+                
+                # Save processed video ID
+                with open(save_path, "a", encoding="utf-8") as f:
+                    f.write(video_id + "\n")
+                
+                dem -= 1
+                if dem == 0:
+                    break
+                    
+            return video_links
+            
+    except Exception as e:
+        tb = e.__traceback__
+        error_message = f"Exception: {e} | {data} | "
+        while tb is not None:
+            filename = tb.tb_frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function_name = tb.tb_frame.f_code.co_name
+            error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+            tb = tb.tb_next
+        save_error_to_file(error_message)
+        return None
+
+def get_webp_url(media_list):
+            for url in media_list:
+                if url.endswith('origin.webp'):
+                    return url
+            return None
+def get_language_code(language):
+    language_codes = {
+        "Vietnamese": "vi-VN",
+        "English": "en-US",
+        "Taiwanese": "zh-TW",
+        "Chinese": "zh-CN",
+        "Japanese": "ja-JP",
+        "Korean": "ko-KR",
+        "German": "de-DE",
+        "Spanish": "es-ES",
+        "French": "fr-FR",
+        "Indonesian": "id-ID",
+        "Italian": "it-IT",
+        "Russian": "ru-RU",
+    }
+    return language_codes.get(language, "vi-VN")
+def check_category(text):
+    if text in [f"cat{i}" for i in range(1, 34)]:
+        return text
+    elif text=="cat32":
+        return "cat10"
+    return "cat10"
+
+
+def upload_video(token, title, description, video_path, url_poster, lang, cat, email, password):
+    global global_proxy, total
+    lang = get_language_code(lang)
+    cat = check_category(cat)
+    h = {
+        'Accept-Encoding':'gzip, deflate, br, zstd',
+        'Authorization':token
+    }
+    while True:
+        try:
+            info = requests.post("https://gw.ganjingworld.com/v1.0c/getuserprofile", headers=h, proxies=global_proxy).json()
+            profile_id = info["data"]["user_profile"]["profileId"]
+            break
+        except Exception as e:
+            pass
+    try:
+        d = {
+            "id":"",
+            "type":"Video",
+            "title":title,
+            "description":description,
+            "poster_url":"",
+            "poster_hd_url":"",
+            "meta":{
+                "video_status":"uploading",
+                "video_id":"","video_url":"",
+                "video_filename":"a.mp4"
+                },
+            "price":0,
+            "premium":0,
+            "visibility":"public",
+            "category_id":cat,
+            "lang":lang,
+            "mode":"draft",
+            "version":0,
+            "priority":"high",
+            "comment_disabled":False,
+            "keywords":[],
+            "liveRedirect":{},
+            "livechat_disabled":True,
+            "set_as_premiere":False,
+            "profile":"fullbitrate",
+            "user_id2":profile_id,
+            "time_scheduled":int(time.time()*1000),
+            "variant":{
+                "default":{
+                    "buy_info":{"price":""},
+                    "rent_info":{"price":""}
+                            }
+                        }
+            }
+    except Exception as e:
+        tb = e.__traceback__
+        error_message = f"Exception: {e} | "
+        while tb is not None:
+            filename = tb.tb_frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function_name = tb.tb_frame.f_code.co_name
+            error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+            tb = tb.tb_next
+        save_error_to_file(error_message)
+        return None
+    while True:
+        try:
+            a = requests.post("https://gw.ganjingworld.com/v1.0c/add-content", headers=h, json=d, proxies=global_proxy).json()
+            if a["result"]["message"]!="Ok":
+                return None
+            break
+        except Exception as e:
+            print(f"Error add content {str(e)}")
+            pass
+    frame_text_box.configure(state = "normal")
+    frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Up draft thành công\n')
+    frame_text_box.configure(state = "disabled")
+    content_id = a["data"]["id"]
+    print(content_id)
+    update_token = requests.get(f"https://gw.ganjingworld.com/v1.1/get-vod-token?content_id={content_id}", headers=h).json()["data"]["token"]
+    print(update_token)
+
+    # Đọc file video
+    with open(video_path, 'rb') as f:
+        file_content = f.read()
+    # Tạo yêu cầu POST để khởi tạo việc tải lên
+    response = requests.post(
+        'https://vodapi.cloudokyo.cloud/api/v1/tus/upload',
+        headers={
+            'Authorization': f'Bearer {update_token}',
+            'Upload-Length': str(len(file_content)),  # Kích thước của file
+            'Tus-Resumable': '1.0.0',
+            "Upload-Metadata":"parent_folders MWdsMGt0a2duaWo3eFpLRTdPWnRkSXZhTTFyZDB1,filename YjA5YTQ3MTItMDczYy00ZTVhLTg0YTktNDMyNjY2Y2Q1N2Q2X3ZpZGVvX21wNC5tcDQ=,filetype dmlkZW8vbXA0,profile_name ZnVsbGJpdHJhdGU=,auto_caption_flag ZmFsc2U=,preview_start MDA6MDA6MDA=,preview_end MDA6MDA6MjA=,priority aGlnaA==,content_type VmlkZW8=,content_id MWdtaTg0NWplMXQ2RnJ1b2NScUltQXRLRjFmbzFj,language ZW4tVVM=,analyze_flag dHJ1ZQ==,channel_id MWdsMGt1MGNqaDU3MlBLTkhxVzY1NFpHQjFvczBj"
+        }
+    )
+
+    # Lấy URL để tải lên từ phản hồi
+    upload_url = response.headers['Location']
+
+    # Tải lên file video bằng yêu cầu PATCH
+    frame_text_box.configure(state = "normal")
+    frame_text_box.insert(customtkinter.END, f'[{email}:{password}] đang upload video\n')
+    frame_text_box.configure(state = "disabled")
+    h_update = {
+                'Authorization': f'Bearer {update_token}',
+                'Content-Type': 'application/offset+octet-stream',
+                'Upload-Offset': '0',
+                'Tus-Resumable': '1.0.0',
+            }
+    upload_proxy = {
+    "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
+    "https":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
+    }
+    while True:
+        try:
+            response = requests.patch(
+                upload_url,
+                headers=h_update,
+                data=file_content,
+            )
+            print(response.headers["upload-offset"], len(file_content))
+            if int(response.headers["upload-offset"])==int(len(file_content)):
+                break
+            else:
+                h_update = {
+                    'Authorization': f'Bearer {update_token}',
+                    'Content-Type': 'application/offset+octet-stream',
+                    'Upload-Offset': response.headers["upload-offset"],
+                    'Tus-Resumable': '1.0.0',
+                }
+                upload_proxy = None
+            time.sleep(5)
+        except Exception as e:
+            pass
+
+    if response.status_code == 204:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thành công\n')
+        frame_text_box.configure(state = "disabled")
+    else:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thất bại\n')
+        frame_text_box.configure(state = "disabled")
+        return False
+    
+
+    while True:
+        try:
+            a = requests.get(upload_url, headers={'Authorization':f"Bearer {update_token}"}, proxies=global_proxy).json()
+            id_video = a['body']["video_id"]
+            break
+        except:
+            pass
+    while True:
+        try:
+            wait = requests.get(f"https://vodapi.cloudokyo.cloud/api/v1/status/{id_video}", headers={'Authorization':f"Bearer {update_token}"}, proxies=global_proxy).json()
+            wait["body"]
+        except:
+            time.sleep(3)
+            continue
+
+        try:
+            url_video = wait["body"]["url"]
+            print(url_video)
+            break
+        except:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] video upload thành công {wait["body"]["progress"]}%\n')
+            frame_text_box.configure(state = "disabled")
+            pass
+    frame_text_box.configure(state = "normal")
+    frame_text_box.insert(customtkinter.END, f'[{email}:{password}] upload thành công video\n')
+    frame_text_box.configure(state = "disabled")
+    print(url_poster)
+    frame_text_box.configure(state = "normal")
+    frame_text_box.insert(customtkinter.END, f'[{email}:{password}] đang upload thumbnail\n')
+    frame_text_box.configure(state = "disabled")
+    while True:
+        try:
+            b =  requests.post("https://imgapi.cloudokyo.cloud/api/v1/image", files={'file': (url_poster, open(url_poster, "rb"), f'image/{str(os.path.splitext(url_poster)[1]).replace(".","")}')}, headers={"Authorization":f"Bearer {update_token}"}, proxies=global_proxy).json()
+            print(b)
+            img_list =b["body"]["image_url"]
+            url_poster = get_webp_url(img_list)
+            break
+        except Exception as e:
+            print(f"error upload image {str(e)}")
+            pass
+    d = '{"id":"'+content_id+'","poster_url":"'+url_poster+'","meta":{"video_status":"ready","video_id":"'+str(id_video)+'","video_filename":"a.mp4","hidden":false,"video_url":"'+url_video+'","featured_video":"","encrypt_method":"","duration":0,"original_duration":0}}'
+
+    up_video = requests.post("https://gw.ganjingworld.com/v1.0c/update-content", headers={'Authorization':token,"Accept":"application/json","Accept-Encoding":"gzip, deflate, br, zstd"}, json=json.loads(d))
+    print(up_video.json()) 
+    if up_video.json()["result"]["message"]=="Ok":
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Reup thành công video\n')
+        frame_text_box.configure(state = "disabled")
+        total +=1
+        return True
+
+def login_and_post(email, password, data, lang, cat, access_token=None):
+    global total, list_hidden
+    dem = int(change_account.get())
+    try:
+        list_data = get_content(data, dem)
+    except Exception as e:
+        tb = e.__traceback__
+        error_message = f"Exception: {e} | "
+        while tb is not None:
+            filename = tb.tb_frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function_name = tb.tb_frame.f_code.co_name
+            error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+            tb = tb.tb_next
+        save_error_to_file(error_message)
+        return
+    if list_data==None:
+        open("Result.txt", "a", encoding="utf-8").write(f"{email}:{password}|Lỗi channel {data}\n")
+        return
+    if dem>len(list_data): dem = len(list_data)
+    total_dem = dem
+    frame_text_box.configure(state = "normal")
+    frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Reup {dem} Video\n')
+    frame_text_box.configure(state = "disabled")
+    while dem>0:
+        print(access_token)
+        try:
+            hehe = list_data[dem-1]
+            url_video = hehe[0]
+            title = remove_hashtags(hehe[1])
+            description = remove_hashtags(hehe[2])
+            img = hehe[3]
+        except: 
+            dem-=1
+            continue
+        if access_token!=None:
+            pass
+        else:
+            try:
+                while True:
+                    try:
+                        token_login = ""
+                        d = {"user_email":email,"client_type":3}
+
+                        h = {
+                            'Authorization':token_login,
+                            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+                            'X-Cdk-Dsid':'1b9be33b-2263-79b6-7da2-6fb5f24efc55',    
+                            'X-Cdk-Lrtm':'2024-03-15 20:57:36',
+                            'Accept':'application/json, text/plain, */*',
+                            'Accept-Encoding':'gzip, deflate, br',
+                            'Accept-Language':'vi,en-US;q=0.9,en;q=0.8',
+                            'Content-Length':'56',
+                            'Origin':'https://www.ganjingworld.com',
+                            'Referer':'https://www.ganjingworld.com/',
+                            'Sec-Ch-Ua':'"Chromium";v="122", "Not(A:Brand";v="24", "Microsoft Edge";v="122"',
+                            'Sec-Ch-Ua-Mobile':'?0',
+                            'Sec-Ch-Ua-Platform':'"Windows"',
+                        }
+                        a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+                        print(a.json())
+                        break
+                    except Exception as e:
+                        print(f"Error get salt {str(e)}") 
+                        continue
+                if "The user does not exist" in a.text:
+                    frame_text_box.configure(state = "normal")
+                    frame_text_box.insert(customtkinter.END, f'Đăng nhập không thành công account {email}:{password}\n')
+                    frame_text_box.configure(state = "disabled")
+                    return None
+                server_salt = a.json()["data"]["server_salt"]
+                client_salt = a.json()["data"]["client_salt"]
+                def hash_password(pss, client_salt, server_salt):
+                    x = hashlib.sha256((pss + client_salt).encode()).digest()
+                    x_base64 = base64.b64encode(x).decode()
+                    S = hashlib.sha256((x_base64 + server_salt).encode()).digest()
+                    S_base64 = base64.b64encode(S).decode()
+                    return S_base64
+
+                hashed_password = hash_password(password, client_salt, server_salt)
+                print(hashed_password)
+
+                d = {"user_email":email,"password_hash":hashed_password,"client_type":3}
+
+                h = {
+                    'Authorization':token_login,
+                    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+                    'X-Cdk-Dsid':'1b9be33b-2263-79b6-7da2-6fb5f24efc55',    
+                    'X-Cdk-Lrtm':'2024-03-15 20:57:36',
+                    'Accept':'application/json, text/plain, */*',
+                    'Accept-Encoding':'gzip, deflate, br',
+                    'Accept-Language':'vi,en-US;q=0.9,en;q=0.8',
+                    'Content-Length':'56',
+                    'Origin':'https://www.ganjingworld.com',
+                    'Referer':'https://www.ganjingworld.com/',
+                    'Sec-Ch-Ua':'"Chromium";v="122", "Not(A:Brand";v="24", "Microsoft Edge";v="122"',
+                    'Sec-Ch-Ua-Mobile':'?0',
+                    'Sec-Ch-Ua-Platform':'"Windows"',
+                }
+                while True:
+                    try:
+                        a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+                        if "Password is incorrect" in a.text:
+                            frame_text_box.configure(state = "normal")
+                            frame_text_box.insert(customtkinter.END, f'Đăng nhập không thành công account {email}:{password}\n')
+                            frame_text_box.configure(state = "disabled")
+                            return None
+                        access_token = a.json()["data"]["token"]
+                        frame_text_box.configure(state = "normal")
+                        frame_text_box.insert(customtkinter.END, f'Đăng nhập thành công account {email}:{password}\n')
+                        frame_text_box.configure(state = "disabled")
+                        break
+                    except Exception as e: 
+                        print(f"Error login {str(e)}") 
+                        pass
+            except Exception as e:
+                frame_text_box.configure(state = "normal")
+                frame_text_box.insert(customtkinter.END, f'{email}:{password}: IP bị block, tiến hành login lại\n')
+                frame_text_box.configure(state = "disabled")
+                open("Result.txt", "a", encoding="utf-8").write(f"{email}:{password}|IP bị block|{str(e)}\n")
+                time.sleep(10)
+                login_and_post(email, password, data, cat, None)
+
+        try:
+            img = save_image(img)
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Đang tải video\n')
+            frame_text_box.configure(state = "disabled")
+            video = download_video(url_video, email, password)
+            if video!=None:
+                frame_text_box.configure(state = "normal")
+                frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Đã tải video\n')
+                frame_text_box.configure(state = "disabled")
+                check = upload_video(access_token, title, description, video, img, lang, cat, email, password)
+                os.remove(video)
+                os.remove(img)
+                if check==None:
+                    break
+                dem-=1
+                time.sleep(int(delay.get()))
+            else:
+                dem-=1
+                time.sleep(int(delay.get()))
+        except Exception as e:
+            tb = e.__traceback__
+            error_message = f"Exception: {e} | "
+            while tb is not None:
+                filename = tb.tb_frame.f_code.co_filename
+                lineno = tb.tb_lineno
+                function_name = tb.tb_frame.f_code.co_name
+                error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+                tb = tb.tb_next
+            save_error_to_file(error_message)
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Đăng video không thành công\n')
+            frame_text_box.configure(state = "disabled")
+    print(f"Done with acc {email}:{password}")
+    open("Result.txt", "a", encoding="utf-8").write(f"{email}:{password} reup {total_dem-dem} Video\n")
+
+def save_error_to_file(error_message):
+    with open("error_log.txt", 'a') as f:
+        f.write(error_message + '\n')
+
+running = True
+list_hidden = []
+
+def stop():
+    global running
+    def stopp():
+        global running
+        running = False
+    threading.Thread(target=stopp).start()
+
+loop = 0
+
+def update_sl():
+    global total, loop
+    while running:
+        total_text_box.configure(text=f"Tổng số lượng Video đã đăng: {total} - Vòng lặp: {loop}")
+        time.sleep(3)
+
+def hidden_run():
+    global list_hidden, total
+    while running:
+        if len(list_hidden)>0:
+            data = list_hidden.pop(0)
+            access_token = data[0]
+            title = data[1]
+            description = data[2]
+            video = data[3]
+            img = data[4]
+            lang = data[5]
+            cat = data[6]
+            email = data[7]
+            password = data[8]
+
+            check = upload_video(access_token, title, description, video, img, lang, cat, email, password)
+            if check==None:
+                continue
+            elif check == False:
+                list_hidden.append(data)
+                time.sleep(int(delay.get()))
+                continue
+            os.remove(video)
+            os.remove(img)
+        time.sleep(5)
+
+lock = threading.Lock()
+
+def run_tool(lock):
+    global list_userpass, running, flag, loop
+    while True:
+        with lock:
+            if len(list_userpass)>0:
+                data = list_userpass.pop(0)
+                if data==flag: loop+=1
+                list_userpass.append(data)
+            else: 
+                break
+        acc = data.split("|")
+        try:
+            login_and_post(acc[0], acc[1], acc[2], acc[3], acc[4])
+        except Exception as e:
+            tb = e.__traceback__
+            error_message = f"Exception: {e} | "
+            while tb is not None:
+                filename = tb.tb_frame.f_code.co_filename
+                lineno = tb.tb_lineno
+                function_name = tb.tb_frame.f_code.co_name
+                error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+                tb = tb.tb_next
+            save_error_to_file(error_message)
+            pass
+def start():
+    global list_token, running
+    def runn():
+        threads = []
+        for j in range(int(luong.get())):
+            threads.append(threading.Thread(target=run_tool, args=(lock,)))
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Hoàn thành nhiệm vụ\n')
+        frame_text_box.configure(state = "disabled")
+        running = False
+        os.system("rmdir /s /q ImageData")
+        os.mkdir("./ImageData")  
+        os.system("rmdir /s /q VideoData")
+        os.mkdir("./VideoData")  
+    if check_status():
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Bắt đầu chạy...\n')
+        frame_text_box.configure(state = "disabled")
+        threading.Thread(target=runn).start()
+        threading.Thread(target=update_sl).start()
+        threading.Thread(target=hidden_run).start()
+
+
+
+list_userpass = []
+
+def open_file_userpass():
+    global list_userpass, flag
+    from tkinter import filedialog
+    file_text_path = filedialog.askopenfilename(filetypes=[("Txt files", "*.txt")], title="Choose data file")
+    if file_text_path!="":
+        a = open(file_text_path, "r").readlines()
+        for cell in a:
+            test = cell.strip("\n").split("|")
+            if len(test)==5 and test[0]!="" and test[1]!="" and test[2]!="" and test[3]!="" and test[4]!="":
+                list_userpass.append(cell.strip("\n"))
+        flag = list_userpass[0]
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Import success {len(list_userpass)} Data\n')
+        frame_text_box.configure(state = "disabled")
+
+infor_input = customtkinter.CTkFrame(app, width = 310)
+infor_input.grid(row = 0, column = 0, padx = 20, pady = (20, 10))
+delay = customtkinter.CTkEntry(infor_input, width = 100, placeholder_text="Delay")
+delay.grid(row = 0, column = 0, padx = (0, 5))
+luong = customtkinter.CTkEntry(infor_input, width = 100, placeholder_text="Luồng")
+luong.grid(row = 0, column = 1, padx = (0, 0))
+change_account = customtkinter.CTkEntry(infor_input, width = 100, placeholder_text="Nhập số Video")
+change_account.grid(row = 0, column = 2, padx = (5, 0))
+
+button_frame = customtkinter.CTkFrame(app, width = 260, height= 50)
+button_frame.grid(row = 2, column = 0, pady = 10)
+
+start_button = customtkinter.CTkButton(button_frame, width = 80, height = 50, text = 'Start', command=start)
+start_button.grid(row = 0, column = 1, padx = (0,0))
+
+stop_button = customtkinter.CTkButton(button_frame, width = 80, height = 50, text = 'Stop', command=stop)
+stop_button.grid(row = 0, column = 2, padx = (10,10))
+
+file_button = customtkinter.CTkButton(button_frame, width = 80, height = 50, text = 'Data', command=open_file_userpass)
+file_button.grid(row = 0, column = 3, padx = (0,0))
+
+frame_text_box = customtkinter.CTkTextbox(app, width = 300, height= 220)
+frame_text_box.grid(row = 4, column = 0, pady = 10)
+frame_text_box.configure(state = "disabled")
+
+total_text_box = customtkinter.CTkLabel(app, text=f"Tổng số lượng Video đã đăng: {total}")
+total_text_box.grid(row = 5, column = 0, pady = 0)
+
+app.mainloop()
