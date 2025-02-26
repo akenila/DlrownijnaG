@@ -1,0 +1,477 @@
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+# Create main window
+app = ctk.CTk()
+app.title("Film Reup Tool")
+app.geometry("600x400")
+if os.path.exists("./SaveData")==False: os.mkdir("./SaveData")  
+if os.path.exists("./ImageData")==False: os.mkdir("./ImageData")  
+if os.path.exists("./VideoData")==False: os.mkdir("./VideoData")  
+
+global_proxy = {
+    "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
+    "https":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
+}
+# Create frame for better organization
+frame = ctk.CTkFrame(app)
+frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+# Create log text area (read-only)
+log_text = ctk.CTkTextbox(frame, width=550, height=200)
+log_text.pack(padx=10, pady=10)
+log_text.configure(state="disabled")  # Make it read-only
+
+# Create thread count input
+thread_frame = ctk.CTkFrame(frame)
+thread_frame.pack(fill="x", padx=10, pady=5)
+
+thread_label = ctk.CTkLabel(thread_frame, text="Number of Threads:")
+thread_label.pack(side="left", padx=5)
+
+thread_entry = ctk.CTkEntry(thread_frame, width=100)
+thread_entry.pack(side="left", padx=5)
+thread_entry.insert(0, "1")  # Default value
+
+# Create buttons frame
+button_frame = ctk.CTkFrame(frame)
+button_frame.pack(fill="x", padx=10, pady=10)
+
+# File paths to store selected files
+acc_file_path = ""  # Changed from list to string
+acc_data = []       # New array to store account data
+data_file_path = "" # Changed from list to string 
+data_content = []   # New array to store data content
+
+def load_acc_file():
+    global acc_file_path, acc_data
+    acc_file_path = filedialog.askopenfilename(title="Select Account File")
+    if acc_file_path:
+        try:
+            with open(acc_file_path, 'r', encoding='utf-8') as f:
+                acc_data = [line.strip() for line in f.readlines() if line.strip()]  # Remove empty lines
+            if len(acc_data) == 0:
+                update_log("Error: Account file is empty")
+                acc_file_path = ""
+                acc_data = []
+                return
+            update_log(f"Account file loaded: {acc_file_path}")
+            update_log(f"Total accounts: {len(acc_data)}")
+        except Exception as e:
+            update_log(f"Error reading account file: {str(e)}")
+            acc_file_path = ""
+            acc_data = []
+
+def load_data_file():
+    global data_file_path, data_content
+    data_file_path = filedialog.askopenfilename(title="Select Data File")
+    if data_file_path:
+        try:
+            with open(data_file_path, 'r', encoding='utf-8') as f:
+                data_content = [line.strip() for line in f.readlines() if line.strip()]  # Remove empty lines
+            if len(data_content) == 0:
+                update_log("Error: Data file is empty")
+                data_file_path = ""
+                data_content = []
+                return
+            update_log(f"Data file loaded: {data_file_path}")
+            update_log(f"Total data: {len(data_content)}")
+        except Exception as e:
+            update_log(f"Error reading data file: {str(e)}")
+            data_file_path = ""
+            data_content = []
+
+def login(data):
+    email = data.split("|")[0]
+    password = data.split("|")[1]
+    token_login = ""
+    global global_proxy
+    while True:
+        try:
+            token_login = ""
+            d = {"user_email":email,"client_type":3}
+
+            h = {
+                'Authorization':token_login,
+                'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+                'X-Cdk-Dsid':'1b9be33b-2263-79b6-7da2-6fb5f24efc55',    
+                'X-Cdk-Lrtm':'2024-03-15 20:57:36',
+                'Accept':'application/json, text/plain, */*',
+                'Accept-Encoding':'gzip, deflate, br',
+                'Accept-Language':'vi,en-US;q=0.9,en;q=0.8',
+                'Content-Length':'56',
+                'Origin':'https://www.ganjingworld.com',
+                'Referer':'https://www.ganjingworld.com/',
+                'Sec-Ch-Ua':'"Chromium";v="122", "Not(A:Brand";v="24", "Microsoft Edge";v="122"',
+                'Sec-Ch-Ua-Mobile':'?0',
+                'Sec-Ch-Ua-Platform':'"Windows"',
+            }
+            a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+            break
+        except Exception as e:
+            continue
+    if "The user does not exist" in a.text:
+            update_log(f"Account {email} không tồn tại")
+            return None
+    server_salt = a.json()["data"]["server_salt"]
+    client_salt = a.json()["data"]["client_salt"]
+    def hash_password(pss, client_salt, server_salt):
+        x = hashlib.sha256((pss + client_salt).encode()).digest()
+        x_base64 = base64.b64encode(x).decode()
+        S = hashlib.sha256((x_base64 + server_salt).encode()).digest()
+        S_base64 = base64.b64encode(S).decode()
+        return S_base64
+
+    hashed_password = hash_password(password, client_salt, server_salt)
+
+    d = {"user_email":email,"password_hash":hashed_password,"client_type":3}
+
+    h = {
+        'Authorization':token_login,
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+        'X-Cdk-Dsid':'1b9be33b-2263-79b6-7da2-6fb5f24efc55',    
+        'X-Cdk-Lrtm':'2024-03-15 20:57:36',
+        'Accept':'application/json, text/plain, */*',
+        'Accept-Encoding':'gzip, deflate, br',
+        'Accept-Language':'vi,en-US;q=0.9,en;q=0.8',
+        'Content-Length':'56',
+        'Origin':'https://www.ganjingworld.com',
+        'Referer':'https://www.ganjingworld.com/',
+        'Sec-Ch-Ua':'"Chromium";v="122", "Not(A:Brand";v="24", "Microsoft Edge";v="122"',
+        'Sec-Ch-Ua-Mobile':'?0',
+        'Sec-Ch-Ua-Platform':'"Windows"',
+    }
+    while True:
+        try:
+            a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+            if "Password is incorrect" in a.text:
+                update_log(f"Password của account {email} không đúng")
+                return None
+            access_token = a.json()["data"]["token"]
+            update_log(f"Đăng nhập account {email} thành công")
+            return access_token
+        except Exception as e: 
+            print(f"Error login {str(e)}") 
+            pass
+def get_data_torrent(keyword):
+    torrents = py1337x.Py1337x()
+    data = []
+    while True:
+        try:
+            results = torrents.search(keyword, page=1)
+            for i in results.items:
+                data.append(i.name + "|" + i.magnet_link+ "|" + i.thumbnail+ "|" + i.description)
+            return data
+        except Exception as e:
+            pass
+def download_image(url, folder="./ImageData", filename=None):
+    try:
+        # Generate unique filename using timestamp
+        
+        # Download image using requests
+        response = requests.get(url, proxies=global_proxy)
+        response.raise_for_status()  # Raise exception for bad status codes
+        
+        # Save the image
+        with open(filename, 'wb') as f:
+            f.write(response.content)
+            
+        update_log(f"Image downloaded successfully: {filename}")
+        return filename
+    except Exception as e:
+        update_log(f"Error downloading image: {str(e)}")
+        return None
+def download_torrent(magnet_link, thumbnail=None):
+    name_file = str(time.time())
+    download_image(thumbnail, filename=f"{name_file}.jpg")
+    output = f'./VideoData/{name_file}.mp4'
+    aria2c_path = "./torrentconvert/aria2c.exe"
+    subprocess.run([aria2c_path, 
+                    "--dir=" + output, 
+                    "-o", output,
+                    "--seed-time=0", 
+                    "-s16", "-x16", "--bt-max-peers=200",
+                    "--file-allocation=none",
+                    magnet_link])
+    return output, f"{name_file}.jpg"
+lock = threading.Lock()
+
+def get_language_code(language):
+    language_codes = {
+        "Vietnamese": "vi-VN",
+        "English": "en-US",
+        "Taiwanese": "zh-TW",
+        "Chinese": "zh-CN",
+        "Japanese": "ja-JP",
+        "Korean": "ko-KR",
+        "German": "de-DE",
+        "Spanish": "es-ES",
+        "French": "fr-FR",
+        "Indonesian": "id-ID",
+        "Italian": "it-IT",
+        "Russian": "ru-RU",
+    }
+    return language_codes.get(language, "vi-VN")
+def check_category(text):
+    if text in [f"cat{i}" for i in range(1, 34)]:
+        return text
+    elif text=="cat32":
+        return "cat10"
+    return "cat10"
+
+def get_webp_url(media_list):
+            for url in media_list:
+                if url.endswith('origin.webp'):
+                    return url
+            return None
+def upload_video(token, title, description, video_path, url_poster, lang, cat, email, password):
+    global global_proxy, total
+    lang = get_language_code(lang)
+    cat = check_category(cat)
+    h = {
+        'Accept-Encoding':'gzip, deflate, br, zstd',
+        'Authorization':token
+    }
+    while True:
+        try:
+            info = requests.post("https://gw.ganjingworld.com/v1.0c/getuserprofile", headers=h, proxies=global_proxy).json()
+            profile_id = info["data"]["user_profile"]["profileId"]
+            break
+        except Exception as e:
+            pass
+    try:
+        d = {
+            "id":"",
+            "type":"Video",
+            "title":title,
+            "description":description,
+            "poster_url":"",
+            "poster_hd_url":"",
+            "meta":{
+                "video_status":"uploading",
+                "video_id":"","video_url":"",
+                "video_filename":"a.mp4"
+                },
+            "price":0,
+            "premium":0,
+            "visibility":"public",
+            "category_id":cat,
+            "lang":lang,
+            "mode":"draft",
+            "version":0,
+            "priority":"high",
+            "comment_disabled":False,
+            "keywords":[],
+            "liveRedirect":{},
+            "livechat_disabled":True,
+            "set_as_premiere":False,
+            "profile":"fullbitrate",
+            "user_id2":profile_id,
+            "time_scheduled":int(time.time()*1000),
+            "variant":{
+                "default":{
+                    "buy_info":{"price":""},
+                    "rent_info":{"price":""}
+                            }
+                        }
+            }
+    except Exception as e:
+        tb = e.__traceback__
+        error_message = f"Exception: {e} | "
+        while tb is not None:
+            filename = tb.tb_frame.f_code.co_filename
+            lineno = tb.tb_lineno
+            function_name = tb.tb_frame.f_code.co_name
+            error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+            tb = tb.tb_next
+        open("error.txt", "a").write(error_message)
+        return None
+    while True:
+        try:
+            a = requests.post("https://gw.ganjingworld.com/v1.0c/add-content", headers=h, json=d, proxies=global_proxy).json()
+            if a["result"]["message"]!="Ok":
+                return None
+            break
+        except Exception as e:
+            print(f"Error add content {str(e)}")
+            pass
+    update_log(f"[{email}:{password}] Đã tạo video {title}")
+    content_id = a["data"]["id"]
+    print(content_id)
+    update_token = requests.get(f"https://gw.ganjingworld.com/v1.1/get-vod-token?content_id={content_id}", headers=h).json()["data"]["token"]
+    print(update_token)
+
+    # Đọc file video
+    with open(video_path, 'rb') as f:
+        file_content = f.read()
+    # Tạo yêu cầu POST để khởi tạo việc tải lên
+    response = requests.post(
+        'https://vodapi.cloudokyo.cloud/api/v1/tus/upload',
+        headers={
+            'Authorization': f'Bearer {update_token}',
+            'Upload-Length': str(len(file_content)),  # Kích thước của file
+            'Tus-Resumable': '1.0.0',
+            "Upload-Metadata":"parent_folders MWdsMGt0a2duaWo3eFpLRTdPWnRkSXZhTTFyZDB1,filename YjA5YTQ3MTItMDczYy00ZTVhLTg0YTktNDMyNjY2Y2Q1N2Q2X3ZpZGVvX21wNC5tcDQ=,filetype dmlkZW8vbXA0,profile_name ZnVsbGJpdHJhdGU=,auto_caption_flag ZmFsc2U=,preview_start MDA6MDA6MDA=,preview_end MDA6MDA6MjA=,priority aGlnaA==,content_type VmlkZW8=,content_id MWdtaTg0NWplMXQ2RnJ1b2NScUltQXRLRjFmbzFj,language ZW4tVVM=,analyze_flag dHJ1ZQ==,channel_id MWdsMGt1MGNqaDU3MlBLTkhxVzY1NFpHQjFvczBj"
+        }
+    )
+
+    # Lấy URL để tải lên từ phản hồi
+    upload_url = response.headers['Location']
+
+    # Tải lên file video bằng yêu cầu PATCH
+    update_log(f"[{email}:{password}] Đang upload video {title}")
+    h_update = {
+                'Authorization': f'Bearer {update_token}',
+                'Content-Type': 'application/offset+octet-stream',
+                'Upload-Offset': '0',
+                'Tus-Resumable': '1.0.0',
+            }
+    upload_proxy = {
+    "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
+    "https":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
+    }
+    while True:
+        try:
+            response = requests.patch(
+                upload_url,
+                headers=h_update,
+                data=file_content,
+            )
+            print(response.headers["upload-offset"], len(file_content))
+            if int(response.headers["upload-offset"])==int(len(file_content)):
+                break
+            else:
+                h_update = {
+                    'Authorization': f'Bearer {update_token}',
+                    'Content-Type': 'application/offset+octet-stream',
+                    'Upload-Offset': response.headers["upload-offset"],
+                    'Tus-Resumable': '1.0.0',
+                }
+                upload_proxy = None
+            time.sleep(5)
+        except Exception as e:
+            pass
+
+    if response.status_code == 204:
+        update_log(f"[{email}:{password}] Upload video thành công")
+    else:
+        update_log(f"[{email}:{password}] Upload video thất bại")
+        return False
+    
+
+    while True:
+        try:
+            a = requests.get(upload_url, headers={'Authorization':f"Bearer {update_token}"}, proxies=global_proxy).json()
+            id_video = a['body']["video_id"]
+            break
+        except:
+            pass
+    while True:
+        try:
+            wait = requests.get(f"https://vodapi.cloudokyo.cloud/api/v1/status/{id_video}", headers={'Authorization':f"Bearer {update_token}"}, proxies=global_proxy).json()
+            wait["body"]
+        except:
+            time.sleep(3)
+            continue
+
+        try:
+            url_video = wait["body"]["url"]
+            print(url_video)
+            break
+        except:
+            update_log('[{email}:{password}] video upload thành công {wait["body"]["progress"]}%\n')
+            pass
+    update_log(f'[{email}:{password}] upload thành công video\n')
+    update_log(f'[{email}:{password}] đang upload thumbnail\n')
+    while True:
+        try:
+            b =  requests.post("https://imgapi.cloudokyo.cloud/api/v1/image", files={'file': (url_poster, open(url_poster, "rb"), f'image/{str(os.path.splitext(url_poster)[1]).replace(".","")}')}, headers={"Authorization":f"Bearer {update_token}"}, proxies=global_proxy).json()
+            print(b)
+            img_list =b["body"]["image_url"]
+            url_poster = get_webp_url(img_list)
+            break
+        except Exception as e:
+            print(f"error upload image {str(e)}")
+            pass
+    d = '{"id":"'+content_id+'","poster_url":"'+url_poster+'","meta":{"video_status":"ready","video_id":"'+str(id_video)+'","video_filename":"a.mp4","hidden":false,"video_url":"'+url_video+'","featured_video":"","encrypt_method":"","duration":0,"original_duration":0}}'
+
+    up_video = requests.post("https://gw.ganjingworld.com/v1.0c/update-content", headers={'Authorization':token,"Accept":"application/json","Accept-Encoding":"gzip, deflate, br, zstd"}, json=json.loads(d))
+    print(up_video.json()) 
+    if up_video.json()["result"]["message"]=="Ok":
+        update_log(f"[{email}:{password}] Upload video {title} thành công")
+        total +=1
+        return True
+
+def login_post(data):
+    global acc_data
+        # Get unique account using lock
+    while True:
+        with lock:
+            if not acc_data:
+                update_log("No more accounts available")
+                return
+            acc = acc_data.pop()  # Remove and get account
+            update_log(f"Processing with account: {acc.split('|')[0]}")
+        token = login(acc)
+        thumnbail = data.split("|")[2]
+        name = data.split("|")[0]
+        magnet = data.split("|")[1]
+        description = data.split("|")[3]
+        update_log(f"{acc.split("|")}:Downloading {name}...")
+        video_path, url_poster = download_torrent(magnet, thumnbail)
+        update_log(f"{acc.split('|')[0]}:Download {name} success")
+        lang = acc.split("|")[3]
+        cat = acc.split("|")[4]
+        email = acc.split("|")[0]
+        password = acc.split("|")[1]
+        upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
+
+
+def start_process():
+    global acc_data, data_content
+    def run():
+        try:
+            threads = int(thread_entry.get())
+            if threads <= 0:
+                update_log("Error: Number of threads must be positive")
+                return
+        except ValueError:
+            update_log("Error: Thread count must be a valid integer")
+            return
+
+        # Check if files are selected
+        if not acc_file_path:
+            update_log("Error: Please select an account file")
+            return
+        if not data_file_path:
+            update_log("Error: Please select a data file")
+            return
+        update_log(f"Starting process with {threads} threads...")
+        keywords = random.choice(data_content)
+        data_film = get_data_torrent(keywords)
+        acc = random.choice(acc_data)
+        for i in range(threads):
+            threading.Thread(target=login_post, args=(data_film,)).start()
+
+    threading.Thread(target=run).start()
+
+
+def update_log(message):
+    log_text.configure(state="normal")
+    log_text.insert("end", message + "\n")
+    log_text.see("end")
+    log_text.configure(state="disabled")
+
+# Create buttons
+load_acc_btn = ctk.CTkButton(button_frame, text="Load Account File", command=load_acc_file)
+load_acc_btn.pack(side="left", padx=5)
+
+load_data_btn = ctk.CTkButton(button_frame, text="Load Data File", command=load_data_file)
+load_data_btn.pack(side="left", padx=5)
+
+start_btn = ctk.CTkButton(button_frame, text="Start", command=start_process)
+start_btn.pack(side="left", padx=5)
+
+# Start the application
+if __name__ == "__main__":
+    app.mainloop()
