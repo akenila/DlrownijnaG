@@ -184,11 +184,11 @@ def download_image(url, folder="./ImageData", filename=None):
 def download_torrent(magnet_link, thumbnail=None):
     name_file = str(time.time())
     download_image(thumbnail, filename=f"{name_file}.jpg")
-    output = f'./VideoData/{name_file}.mp4'
+    output = f'./VideoData'
     aria2c_path = "./torrentconvert/aria2c.exe"
     subprocess.run([aria2c_path, 
                     "--dir=" + output, 
-                    "-o", output,
+                    "-o", f"{name_file}.mp4",
                     "--seed-time=0", 
                     "-s16", "-x16", "--bt-max-peers=200",
                     "--file-allocation=none",
