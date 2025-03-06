@@ -1,3 +1,60 @@
+def create_poster_with_blurred_background(input_path, output_path, blur_radius=4, darken_factor=0.4):
+    # Mở ảnh gốc
+    original_img = Image.open(input_path)
+    
+    # Tính toán kích thước cho ảnh đầu ra tỷ lệ 16:9
+    target_height = original_img.height
+    target_width = int(target_height * 16 / 9)
+    
+    # Tạo ảnh nền (phiên bản phóng to và làm mờ)
+    scale_factor = max(1, target_width / original_img.width)
+    bg_width = int(original_img.width * scale_factor)
+    bg_height = int(original_img.height * scale_factor)
+    
+    bg_img = original_img.resize((bg_width, bg_height), Image.LANCZOS)
+    
+    # Làm mờ hình nền
+    bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    
+    # Làm tối hình nền để ảnh chính nổi bật hơn
+    enhancer = ImageEnhance.Brightness(bg_img)
+    bg_img = enhancer.enhance(darken_factor)
+    
+    # Cắt nền để phù hợp với kích thước mục tiêu
+    bg_x_offset = (bg_width - target_width) // 2
+    bg_y_offset = (bg_height - target_height) // 2
+    bg_img = bg_img.crop((bg_x_offset, bg_y_offset, 
+                         bg_x_offset + target_width, 
+                         bg_y_offset + target_height))
+    
+    # Tạo ảnh mới với nền đã xử lý
+    result = Image.new("RGB", (target_width, target_height))
+    result.paste(bg_img, (0, 0))
+    
+    # Giữ nguyên tỷ lệ khung hình gốc cho ảnh ở giữa
+    foreground_height = target_height
+    foreground_width = int(original_img.width * foreground_height / original_img.height)
+    
+    # Nếu chiều rộng lớn hơn khung, điều chỉnh lại
+    if foreground_width > target_width:
+        foreground_width = target_width
+        foreground_height = int(original_img.height * foreground_width / original_img.width)
+    
+    # Điều chỉnh kích thước ảnh gốc cho phần hiển thị chính
+    foreground_img = original_img.resize((foreground_width, foreground_height), Image.LANCZOS)
+    
+    # Tính toán vị trí để căn giữa ảnh
+    position_x = (target_width - foreground_width) // 2
+    position_y = (target_height - foreground_height) // 2
+    
+    # Đặt ảnh gốc lên kết quả
+    result.paste(foreground_img, (position_x, position_y))
+    
+    # Lưu kết quả
+    result.save(output_path)
+
+
+# Set theme and default appearance
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -184,15 +241,61 @@ def download_image(url, folder="./ImageData", filename=None):
 def download_torrent(magnet_link, thumbnail=None):
     name_file = str(time.time())
     download_image(thumbnail, filename=f"{name_file}.jpg")
-    output = f'./VideoData'
+    create_poster_with_blurred_background(f"{name_file}.jpg", f"{name_file}.jpg")
+    output = f'{name_file}.mp4'
+    output_dir = "./VideoData"
     aria2c_path = "./torrentconvert/aria2c.exe"
     subprocess.run([aria2c_path, 
-                    "--dir=" + output, 
-                    "-o", f"{name_file}.mp4",
-                    "--seed-time=0", 
-                    "-s16", "-x16", "--bt-max-peers=200",
-                    "--file-allocation=none",
-                    magnet_link])
+                "--dir=" + output_dir, 
+                "-o", output,
+                "--seed-time=0", 
+                "-s16", "-x16", "--bt-max-peers=200",
+                "--file-allocation=none",
+                "--bt-save-metadata",
+                "--select-file=1",
+                "--always-resume=false",
+                "--check-integrity=false",
+                "--allow-overwrite=true",
+                "--timeout=600",  # 10 minute connection timeout
+                "--max-tries=5",  # Retry 5 times on failure
+                magnet_link], 
+                timeout=3600)
+        
+        # Kiểm tra nếu file vẫn nằm trong thư mục con
+    for root, dirs, files in os.walk(output_dir):
+        for file in files:
+            if file.endswith(".mp4") or file.endswith(".mkv"):
+                file_path = os.path.join(root, file)
+                # Nếu file không nằm trực tiếp trong output_dir
+                if os.path.dirname(file_path) != os.path.abspath(output_dir):
+                    # Lấy kích thước file để theo dõi
+                    file_size = os.path.getsize(file_path)
+                    dest_path = os.path.join(output_dir, output)
+                    
+                    # Di chuyển file ra thư mục output_dir
+                    try:
+                        os.rename(file_path, dest_path)
+                    except OSError:  
+                        # If rename fails (likely different drives), manually copy and delete
+                        with open(file_path, 'rb') as src_file:
+                            with open(dest_path, 'wb') as dst_file:
+                                # Read and write in chunks to handle large files
+                                chunk_size = 1024 * 1024  # 1MB chunks
+                                copied_size = 0
+                                while True:
+                                    chunk = src_file.read(chunk_size)
+                                    if not chunk:
+                                        break
+                                    dst_file.write(chunk)
+                                    copied_size += len(chunk)
+                        
+                        # Delete original file after successful copy
+                        os.remove(file_path)
+                    
+                    # Kiểm tra file đích đã tồn tại và có kích thước đúng chưa
+                    while not (os.path.exists(dest_path) and os.path.getsize(dest_path) == file_size):
+                        time.sleep(2)
+                        
     return output, f"{name_file}.jpg"
 lock = threading.Lock()
 
@@ -402,7 +505,230 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
         total +=1
         return True
 
-def login_post(data):
+def move_and_rename_file(source_file, destination_folder, new_name=None):
+    try:
+        # Check if source file exists
+        if not os.path.isfile(source_file):
+            return f"Error: Source file '{source_file}' does not exist"
+            
+        # Create destination folder if it doesn't exist
+        os.makedirs(destination_folder, exist_ok=True)
+            
+        # Get the file extension
+        _, file_extension = os.path.splitext(source_file)
+        
+        # Determine the new filename
+        if new_name:
+            new_filename = f"{new_name}{file_extension}"
+        else:
+            new_filename = os.path.basename(source_file)
+            
+        # Create the full destination path
+        destination_path = os.path.join(destination_folder, new_filename)
+        
+        try:
+            # Try simple rename first (faster, works on same drive)
+            os.rename(source_file, destination_path)
+        except OSError:  
+            # If rename fails (different drives), manually copy and delete
+            with open(source_file, 'rb') as src_file:
+                with open(destination_path, 'wb') as dst_file:
+                    # Read and write in chunks to handle large files
+                    chunk_size = 1024 * 1024  # 1MB chunks
+                    while True:
+                        chunk = src_file.read(chunk_size)
+                        if not chunk:
+                            break
+                        dst_file.write(chunk)
+            
+            # Delete the source file after successful copy
+            os.remove(source_file)
+        
+        return destination_path
+        
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def get_movie_with_torrent_and_subtitle(genre, language="vi", output_dir="E:/Job/Ganjinworld/ReupFilm"):
+    # TMDb API Key
+    tmdb_api_key = "3156a0847ba7024e5c7f5bd8e60ff1c6"
+    
+    # Step 1: Get random movie based on genre
+    movie = get_random_movie(tmdb_api_key, genre)
+    if not movie:
+        return {"error": f"No movie found for genre: {genre}"}
+    
+    movie_title = movie["title"]
+    imdb_id = movie["imdb_id"]
+    release_year = movie["release_date"].split("-")[0]
+    
+    print(f"Found movie: {movie_title} ({release_year}) - IMDB ID: {imdb_id}")
+    
+    # Step 2: Search for torrent using py1337x
+    torrent_link = None
+    while True:
+        try:
+            # Initialize torrent client
+            torrent = Py1337x()
+            
+            # Search for movie torrent
+            search_query = f"{movie_title}"
+            print(f"Searching for torrent: {search_query}")
+            results = torrent.search(search_query, category="Movies")
+            
+            if results.items:
+                # Get first torrent result
+                torrent_details = results.items[0]
+
+                torrent_link = torrent.info(torrent_id=torrent_details.torrent_id).magnet_link
+                print(f"Found torrent link for: {movie_title}")
+            break
+        except Exception as e:
+            print(f"Error searching for torrent: {str(e)}")
+        time.sleep(5)
+    
+    # Step 3: Get subtitles from OpenSubtitles
+    subtitle_path = None
+    try:
+        # Initialize OpenSubtitles client
+        subtitles = OpenSubtitles("MyApp v1.0.0", "4ovMxmzOtiodjM85kQ2ypCxNiM6aYOVU")
+        
+        # Log in to OpenSubtitles
+        subtitles.login("Tenica", "12112005")
+        
+        # Search for subtitles - remove "tt" prefix from IMDB ID
+        imdb_id_numeric = imdb_id.replace("tt", "")
+        response = subtitles.search(imdb_id=imdb_id_numeric, languages="vi")
+        a = subtitles.download_and_save(response.data[0])
+        move_and_rename_file(a, "Data", f"{movie_title}")
+        subtitle_path = os.path.join("./Data", f"{movie_title}.srt")
+        
+    except Exception as e:
+        print(f"Error getting subtitles: {str(e)}")
+    
+    return {
+        "movie": movie,
+        "torrent_link": torrent_link,
+        "subtitle_path": subtitle_path
+    }
+
+def get_random_movie(api_key: str, genre: str):
+    # Dictionary of common genres and their TMDb IDs
+    genres = {
+        "action": 28,
+        "comedy": 35,
+        "drama": 18,
+        "horror": 27,
+        "romance": 10749,
+        "science_fiction": 878,
+        "thriller": 53
+    }
+
+    try:
+        genre_id = genres.get(genre.lower())
+        if not genre_id:
+            raise ValueError(f"Genre '{genre}' not found")
+
+        # Get a random page (1-5)
+        page = random.randint(1, 5)
+        
+        # Make API request
+        base_url = "https://api.themoviedb.org/3"
+        url = f"{base_url}/discover/movie"
+        params = {
+            "api_key": api_key,
+            "with_genres": genre_id,
+            "page": page,
+            "include_adult": False,
+            "language": "en-US",
+            "vote_count.gte": 100  # Only get movies with at least 100 votes
+        }
+        
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        
+        movies = response.json()["results"]
+        if not movies:
+            return None
+        
+        # Select random movie from results
+        movie = random.choice(movies)
+        
+        # Get IMDB ID
+        movie_id = movie["id"]
+        movie_url = f"{base_url}/movie/{movie_id}/external_ids"
+        movie_response = requests.get(movie_url, params={"api_key": api_key})
+        movie_response.raise_for_status()
+        
+        imdb_id = movie_response.json()["imdb_id"]
+        
+        return {
+            "title": movie["title"],
+            "imdb_id": imdb_id,
+            "release_date": movie["release_date"]
+        }
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return None
+def get_movie_with_torrent_and_subtitle(genre):
+    # TMDb API Key
+    tmdb_api_key = "3156a0847ba7024e5c7f5bd8e60ff1c6"
+    
+    # Step 1: Get random movie based on genre
+    movie = get_random_movie(tmdb_api_key, genre)
+    if not movie:
+        return {"error": f"No movie found for genre: {genre}"}
+    
+    movie_title = movie["title"]
+    imdb_id = movie["imdb_id"]
+    release_year = movie["release_date"].split("-")[0]
+    
+    print(f"Found movie: {movie_title} ({release_year}) - IMDB ID: {imdb_id}")
+    
+    # Step 2: Search for torrent using py1337x
+    torrent_link = None
+    while True:
+        try:
+            # Initialize torrent client
+            torrent = Py1337x()
+            
+            # Search for movie torrent
+            search_query = f"{movie_title}"
+            print(f"Searching for torrent: {search_query}")
+            results = torrent.search(search_query, category="Movies")
+            
+            if results.items:
+                # Get first torrent result
+                torrent_details = results.items[0]
+
+                torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
+                magnet_link = torrent_link.magnet_link
+                title = torrent_details.name
+                des = torrent_link.description
+
+            break
+        except Exception as e:
+            pass
+        time.sleep(5)
+    
+    # Step 3: Get subtitles from OpenSubtitle
+    
+    return {
+        "title": title,
+        "magnet": magnet_link,
+        "thumbnail": torrent_link.thumbnail,
+        "description": des
+    }
+def format_time(td):
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    milliseconds = td.microseconds // 1000
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
+
+def login_post():
     global acc_data
         # Get unique account using lock
     while True:
@@ -412,16 +738,18 @@ def login_post(data):
                 return
             acc = acc_data.pop()  # Remove and get account
             update_log(f"Processing with account: {acc.split('|')[0]}")
+        genre = acc.split("|")[2]
+        data = get_movie_with_torrent_and_subtitle(genre)
         token = login(acc)
-        thumnbail = data.split("|")[2]
-        name = data.split("|")[0]
-        magnet = data.split("|")[1]
-        description = data.split("|")[3]
+        thumnbail = data["thumbnail"]
+        name = data["title"]
+        magnet = data["magnet"]
+        description = data['description']
         update_log(f"{acc.split("|")}:Downloading {name}...")
         video_path, url_poster = download_torrent(magnet, thumnbail)
         update_log(f"{acc.split('|')[0]}:Download {name} success")
-        lang = acc.split("|")[3]
-        cat = acc.split("|")[4]
+        lang = acc.split("|")[4]
+        cat = acc.split("|")[5]
         email = acc.split("|")[0]
         password = acc.split("|")[1]
         upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
@@ -447,11 +775,10 @@ def start_process():
             update_log("Error: Please select a data file")
             return
         update_log(f"Starting process with {threads} threads...")
-        keywords = random.choice(data_content)
-        data_film = get_data_torrent(keywords)
+        
         acc = random.choice(acc_data)
         for i in range(threads):
-            threading.Thread(target=login_post, args=(data_film,)).start()
+            threading.Thread(target=login_post, args=()).start()
 
     threading.Thread(target=run).start()
 
@@ -465,9 +792,6 @@ def update_log(message):
 # Create buttons
 load_acc_btn = ctk.CTkButton(button_frame, text="Load Account File", command=load_acc_file)
 load_acc_btn.pack(side="left", padx=5)
-
-load_data_btn = ctk.CTkButton(button_frame, text="Load Data File", command=load_data_file)
-load_data_btn.pack(side="left", padx=5)
 
 start_btn = ctk.CTkButton(button_frame, text="Start", command=start_process)
 start_btn.pack(side="left", padx=5)
