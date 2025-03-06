@@ -90,6 +90,16 @@ thread_entry = ctk.CTkEntry(thread_frame, width=100)
 thread_entry.pack(side="left", padx=5)
 thread_entry.insert(0, "1")  # Default value
 
+video_num_frame = ctk.CTkFrame(frame)
+video_num_frame.pack(fill="x", padx=10, pady=5)
+
+video_num_label = ctk.CTkLabel(video_num_frame, text="Number of video_nums:")
+video_num_label.pack(side="left", padx=5)
+
+video_num_entry = ctk.CTkEntry(video_num_frame, width=100)
+video_num_entry.pack(side="left", padx=5)
+video_num_entry.insert(0, "1")  # Default value
+
 # Create buttons frame
 button_frame = ctk.CTkFrame(frame)
 button_frame.pack(fill="x", padx=10, pady=10)
@@ -738,21 +748,23 @@ def login_post():
                 return
             acc = acc_data.pop()  # Remove and get account
             update_log(f"Processing with account: {acc.split('|')[0]}")
-        genre = acc.split("|")[2]
-        data = get_movie_with_torrent_and_subtitle(genre)
-        token = login(acc)
-        thumnbail = data["thumbnail"]
-        name = data["title"]
-        magnet = data["magnet"]
-        description = data['description']
-        update_log(f"{acc.split("|")}:Downloading {name}...")
-        video_path, url_poster = download_torrent(magnet, thumnbail)
-        update_log(f"{acc.split('|')[0]}:Download {name} success")
-        lang = acc.split("|")[4]
-        cat = acc.split("|")[5]
-        email = acc.split("|")[0]
-        password = acc.split("|")[1]
-        upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
+        num_video = int(video_num_entry.get())
+        for i in range(num_video):
+            genre = acc.split("|")[2]
+            data = get_movie_with_torrent_and_subtitle(genre)
+            token = login(acc)
+            thumnbail = data["thumbnail"]
+            name = data["title"]
+            magnet = data["magnet"]
+            description = data['description']
+            update_log(f"{acc.split("|")}:Downloading {name}...")
+            video_path, url_poster = download_torrent(magnet, thumnbail)
+            update_log(f"{acc.split('|')[0]}:Download {name} success")
+            lang = acc.split("|")[4]
+            cat = acc.split("|")[5]
+            email = acc.split("|")[0]
+            password = acc.split("|")[1]
+            upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
 
 
 def start_process():
