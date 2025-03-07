@@ -682,35 +682,35 @@ def login_post(lock):
     threads = int(thread_entry.get())
     global acc_data
         # Get unique account using lock
-    def run():
-            while True:
-                with lock:
-                    if not acc_data:
-                        update_log("No more accounts available")
-                        return
-                    acc = acc_data.pop()  # Remove and get account
-                    update_log(f"Processing with account: {acc.split('|')[0]}")
-                num_video = int(video_num_entry.get())
-                for i in range(num_video):
-                    genre = acc.split("|")[2]
-                    update_log(f"{acc.split('|')[0]}:Getting movie with torrent and subtitle...")
-                    data = get_movie_with_torrent_and_subtitle(genre)
-                    update_log(f"{acc.split('|')[0]}:Get movie success")
-                    token = login(acc)
-                    thumnbail = data["thumbnail"]
-                    name = data["title"]
-                    magnet = data["magnet"]
-                    description = data['description']
-                    update_log(f"{acc.split("|")}:Downloading {name}...")
-                    video_path, url_poster = download_torrent(magnet, thumnbail)
-                    update_log(f"{acc.split('|')[0]}:Download {name} success")
-                    lang = acc.split("|")[4]
-                    cat = acc.split("|")[5]
-                    email = acc.split("|")[0]
-                    password = acc.split("|")[1]
-                    upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
+    def run(lock):
+        while True:
+            with lock:
+                if not acc_data:
+                    update_log("No more accounts available")
+                    return
+                acc = acc_data.pop()  # Remove and get account
+                update_log(f"Processing with account: {acc.split('|')[0]}")
+            num_video = int(video_num_entry.get())
+            for i in range(num_video):
+                genre = acc.split("|")[2]
+                update_log(f"{acc.split('|')[0]}:Getting movie with torrent and subtitle...")
+                data = get_movie_with_torrent_and_subtitle(genre)
+                update_log(f"{acc.split('|')[0]}:Get movie success")
+                token = login(acc)
+                thumnbail = data["thumbnail"]
+                name = data["title"]
+                magnet = data["magnet"]
+                description = data['description']
+                update_log(f"{acc.split("|")}:Downloading {name}...")
+                video_path, url_poster = download_torrent(magnet, thumnbail)
+                update_log(f"{acc.split('|')[0]}:Download {name} success")
+                lang = acc.split("|")[4]
+                cat = acc.split("|")[5]
+                email = acc.split("|")[0]
+                password = acc.split("|")[1]
+                upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
     for i in range(threads):
-            threading.Thread(target=run).start()
+        threading.Thread(target=run, args=(lock,)).start()
 
 
 def start_process():
