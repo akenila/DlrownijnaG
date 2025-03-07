@@ -732,7 +732,7 @@ def start_process():
             return
         update_log(f"Starting process with {threads} threads...")
         
-        threading.Thread(target=login_post, args=(lock)).start()
+        threading.Thread(target=login_post, args=(lock,)).start()
 
     threading.Thread(target=run).start()
 
