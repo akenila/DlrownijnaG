@@ -621,7 +621,7 @@ def get_random_movie(api_key: str, genre: str):
     except Exception as e:
         print(f"Error: {str(e)}")
         return None
-def get_movie_with_torrent_and_subtitle(genre):
+def get_movie_with_torrent_and_subtitle(genre, lock):
     # TMDb API Key
     tmdb_api_key = "3156a0847ba7024e5c7f5bd8e60ff1c6"
     
@@ -638,29 +638,31 @@ def get_movie_with_torrent_and_subtitle(genre):
     
     # Step 2: Search for torrent using py1337x
     torrent_link = None
-    while True:
-        try:
-            # Initialize torrent client
-            torrent = Py1337x()
-            
-            # Search for movie torrent
-            search_query = f"{movie_title}"
-            print(f"Searching for torrent: {search_query}")
-            results = torrent.search(search_query, category="Movies")
-            
-            if results.items:
-                # Get first torrent result
-                torrent_details = results.items[0]
+    with lock:
+        while True:
+            try:
+                update_log(f"Searching for torrent: {movie_title}")
+                # Initialize torrent client
+                torrent = Py1337x()
+                
+                # Search for movie torrent
+                search_query = f"{movie_title}"
+                print(f"Searching for torrent: {search_query}")
+                results = torrent.search(search_query, category="Movies")
+                
+                if results.items:
+                    # Get first torrent result
+                    torrent_details = results.items[0]
 
-                torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
-                magnet_link = torrent_link.magnet_link
-                title = torrent_details.name
-                des = torrent_link.description
+                    torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
+                    magnet_link = torrent_link.magnet_link
+                    title = torrent_details.name
+                    des = torrent_link.description
 
-            break
-        except Exception as e:
-            pass
-        time.sleep(5)
+                break
+            except Exception as e:
+                pass
+            time.sleep(5)
     update_log(f"Found torrent: {title}")
     # Step 3: Get subtitles from OpenSubtitle
     
@@ -694,7 +696,7 @@ def login_post(lock):
             for i in range(num_video):
                 genre = acc.split("|")[2]
                 update_log(f"{acc.split('|')[0]}:Getting movie with torrent and subtitle...")
-                data = get_movie_with_torrent_and_subtitle(genre)
+                data = get_movie_with_torrent_and_subtitle(genre, lock)
                 update_log(f"{acc.split('|')[0]}:Get movie success")
                 token = login(acc)
                 thumnbail = data["thumbnail"]
