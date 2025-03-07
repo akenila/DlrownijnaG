@@ -174,14 +174,14 @@ def login(data):
                 'Sec-Ch-Ua-Platform':'"Windows"',
             }
             a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+            if "The user does not exist" in a.text:
+                update_log(f"Account {email} không tồn tại")
+                return None
+            server_salt = a.json()["data"]["server_salt"]
+            client_salt = a.json()["data"]["client_salt"]
             break
         except Exception as e:
             continue
-    if "The user does not exist" in a.text:
-            update_log(f"Account {email} không tồn tại")
-            return None
-    server_salt = a.json()["data"]["server_salt"]
-    client_salt = a.json()["data"]["client_salt"]
     def hash_password(pss, client_salt, server_salt):
         x = hashlib.sha256((pss + client_salt).encode()).digest()
         x_base64 = base64.b64encode(x).decode()
