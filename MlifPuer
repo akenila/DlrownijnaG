@@ -493,7 +493,7 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
             print(url_video)
             break
         except:
-            update_log('[{email}:{password}] video upload thành công {wait["body"]["progress"]}%\n')
+            update_log(f'[{email}:{password}] video upload thành công {wait["body"]["progress"]}%\n')
             pass
     update_log(f'[{email}:{password}] upload thành công video\n')
     update_log(f'[{email}:{password}] đang upload thumbnail\n')
