@@ -240,6 +240,7 @@ def download_image(url, folder="./ImageData", filename=None):
         response.raise_for_status()  # Raise exception for bad status codes
         
         # Save the image
+        filename = os.path.join(folder, filename) if filename else os.path.join(folder, f"{time.time()}.jpg")
         with open(filename, 'wb') as f:
             f.write(response.content)
             
@@ -760,8 +761,8 @@ def login_post():
             update_log(f"{acc.split("|")}:Downloading {name}...")
             video_path, url_poster = download_torrent(magnet, thumnbail)
             update_log(f"{acc.split('|')[0]}:Download {name} success")
-            lang = acc.split("|")[3]
-            cat = acc.split("|")[4]
+            lang = acc.split("|")[4]
+            cat = acc.split("|")[5]
             email = acc.split("|")[0]
             password = acc.split("|")[1]
             upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
@@ -783,7 +784,9 @@ def start_process():
         if not acc_file_path:
             update_log("Error: Please select an account file")
             return
-      
+        if not data_file_path:
+            update_log("Error: Please select a data file")
+            return
         update_log(f"Starting process with {threads} threads...")
         
         acc = random.choice(acc_data)
