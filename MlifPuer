@@ -562,68 +562,6 @@ def move_and_rename_file(source_file, destination_folder, new_name=None):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def get_movie_with_torrent_and_subtitle(genre, language="vi", output_dir="E:/Job/Ganjinworld/ReupFilm"):
-    # TMDb API Key
-    tmdb_api_key = "3156a0847ba7024e5c7f5bd8e60ff1c6"
-    
-    # Step 1: Get random movie based on genre
-    movie = get_random_movie(tmdb_api_key, genre)
-    if not movie:
-        return {"error": f"No movie found for genre: {genre}"}
-    
-    movie_title = movie["title"]
-    imdb_id = movie["imdb_id"]
-    release_year = movie["release_date"].split("-")[0]
-    
-    print(f"Found movie: {movie_title} ({release_year}) - IMDB ID: {imdb_id}")
-    
-    # Step 2: Search for torrent using py1337x
-    torrent_link = None
-    while True:
-        try:
-            # Initialize torrent client
-            torrent = Py1337x()
-            
-            # Search for movie torrent
-            search_query = f"{movie_title}"
-            print(f"Searching for torrent: {search_query}")
-            results = torrent.search(search_query, category="Movies")
-            
-            if results.items:
-                # Get first torrent result
-                torrent_details = results.items[0]
-
-                torrent_link = torrent.info(torrent_id=torrent_details.torrent_id).magnet_link
-                print(f"Found torrent link for: {movie_title}")
-            break
-        except Exception as e:
-            print(f"Error searching for torrent: {str(e)}")
-        time.sleep(5)
-    
-    # Step 3: Get subtitles from OpenSubtitles
-    subtitle_path = None
-    try:
-        # Initialize OpenSubtitles client
-        subtitles = OpenSubtitles("MyApp v1.0.0", "4ovMxmzOtiodjM85kQ2ypCxNiM6aYOVU")
-        
-        # Log in to OpenSubtitles
-        subtitles.login("Tenica", "12112005")
-        
-        # Search for subtitles - remove "tt" prefix from IMDB ID
-        imdb_id_numeric = imdb_id.replace("tt", "")
-        response = subtitles.search(imdb_id=imdb_id_numeric, languages="vi")
-        a = subtitles.download_and_save(response.data[0])
-        move_and_rename_file(a, "Data", f"{movie_title}")
-        subtitle_path = os.path.join("./Data", f"{movie_title}.srt")
-        
-    except Exception as e:
-        print(f"Error getting subtitles: {str(e)}")
-    
-    return {
-        "movie": movie,
-        "torrent_link": torrent_link,
-        "subtitle_path": subtitle_path
-    }
 
 def get_random_movie(api_key: str, genre: str):
     # Dictionary of common genres and their TMDb IDs
@@ -697,7 +635,7 @@ def get_movie_with_torrent_and_subtitle(genre):
     imdb_id = movie["imdb_id"]
     release_year = movie["release_date"].split("-")[0]
     
-    print(f"Found movie: {movie_title} ({release_year}) - IMDB ID: {imdb_id}")
+    update_log(f"Found movie: {movie_title} ({release_year})")
     
     # Step 2: Search for torrent using py1337x
     torrent_link = None
@@ -724,7 +662,7 @@ def get_movie_with_torrent_and_subtitle(genre):
         except Exception as e:
             pass
         time.sleep(5)
-    
+    update_log(f"Found torrent: {title}")
     # Step 3: Get subtitles from OpenSubtitle
     
     return {
@@ -754,7 +692,9 @@ def login_post():
         num_video = int(video_num_entry.get())
         for i in range(num_video):
             genre = acc.split("|")[2]
+            update_log(f"{acc.split('|')[0]}:Getting movie with torrent and subtitle...")
             data = get_movie_with_torrent_and_subtitle(genre)
+            update_log(f"{acc.split('|')[0]}:Get movie success")
             token = login(acc)
             thumnbail = data["thumbnail"]
             name = data["title"]
