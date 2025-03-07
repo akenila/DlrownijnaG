@@ -252,7 +252,9 @@ def download_image(url, folder="./ImageData", filename=None):
 def download_torrent(magnet_link, thumbnail=None):
     name_file = str(time.time())
     download_image(thumbnail, filename=f"{name_file}.jpg")
-    create_poster_with_blurred_background(f"{name_file}.jpg", f"{name_file}.jpg")
+    create_poster_with_blurred_background(f"./ImageData/{name_file}.jpg", f"./ImageData/{name_file}.jpg")
+    update_log(f"Edited thumbnail: {name_file}.jpg")
+    update_log(f"Downloading torrent: {magnet_link}")
     output = f'{name_file}.mp4'
     output_dir = "./VideoData"
     aria2c_path = "./torrentconvert/aria2c.exe"
