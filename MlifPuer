@@ -784,9 +784,6 @@ def start_process():
         if not acc_file_path:
             update_log("Error: Please select an account file")
             return
-        if not data_file_path:
-            update_log("Error: Please select a data file")
-            return
         update_log(f"Starting process with {threads} threads...")
         
         acc = random.choice(acc_data)
