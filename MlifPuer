@@ -760,8 +760,8 @@ def login_post():
             update_log(f"{acc.split("|")}:Downloading {name}...")
             video_path, url_poster = download_torrent(magnet, thumnbail)
             update_log(f"{acc.split('|')[0]}:Download {name} success")
-            lang = acc.split("|")[4]
-            cat = acc.split("|")[5]
+            lang = acc.split("|")[3]
+            cat = acc.split("|")[4]
             email = acc.split("|")[0]
             password = acc.split("|")[1]
             upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
