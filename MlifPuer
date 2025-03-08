@@ -65,6 +65,7 @@ app.geometry("600x400")
 if os.path.exists("./SaveData")==False: os.mkdir("./SaveData")  
 if os.path.exists("./ImageData")==False: os.mkdir("./ImageData")  
 if os.path.exists("./VideoData")==False: os.mkdir("./VideoData")  
+if os.path.exists("./Data")==False: os.mkdir("./Data")
 
 global_proxy = {
     "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
@@ -259,7 +260,7 @@ def download_torrent(magnet_link, thumbnail=None):
     update_log(f"Edited thumbnail: {name_file}.jpg")
     
     # Create unique directory for this download to avoid conflicts between threads
-    unique_dir = os.path.join("./VideoData", f"temp_{name_file}")
+    unique_dir = os.path.join("./Data", f"temp_{name_file}")
     os.makedirs(unique_dir, exist_ok=True)
     
     output = f'{name_file}.mp4'
@@ -474,7 +475,10 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
                 headers=h_update,
                 data=file_content,
             )
-            update_log(f"[{email}:{password}] Đã upload {response.headers["upload-offset"]} bytes")
+            try:
+                update_log(f"[{email}:{password}] Đã upload {response.headers["upload-offset"]} bytes")
+            except Exception as e:
+                open("error.txt", "a").write(f"Error upload video {str(e)}")
             if int(response.headers["upload-offset"])==int(len(file_content)):
                 break
             else:
@@ -538,50 +542,6 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
         update_log(f"[{email}:{password}] Upload video {title} thành công")
         total +=1
         return True
-
-def move_and_rename_file(source_file, destination_folder, new_name=None):
-    try:
-        # Check if source file exists
-        if not os.path.isfile(source_file):
-            return f"Error: Source file '{source_file}' does not exist"
-            
-        # Create destination folder if it doesn't exist
-        os.makedirs(destination_folder, exist_ok=True)
-            
-        # Get the file extension
-        _, file_extension = os.path.splitext(source_file)
-        
-        # Determine the new filename
-        if new_name:
-            new_filename = f"{new_name}{file_extension}"
-        else:
-            new_filename = os.path.basename(source_file)
-            
-        # Create the full destination path
-        destination_path = os.path.join(destination_folder, new_filename)
-        
-        try:
-            # Try simple rename first (faster, works on same drive)
-            os.rename(source_file, destination_path)
-        except OSError:  
-            # If rename fails (different drives), manually copy and delete
-            with open(source_file, 'rb') as src_file:
-                with open(destination_path, 'wb') as dst_file:
-                    # Read and write in chunks to handle large files
-                    chunk_size = 1024 * 1024  # 1MB chunks
-                    while True:
-                        chunk = src_file.read(chunk_size)
-                        if not chunk:
-                            break
-                        dst_file.write(chunk)
-            
-            # Delete the source file after successful copy
-            os.remove(source_file)
-        
-        return destination_path
-        
-    except Exception as e:
-        return f"Error: {str(e)}"
 
 
 def get_random_movie(api_key: str, genre: str):
