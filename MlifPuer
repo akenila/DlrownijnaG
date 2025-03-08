@@ -341,6 +341,7 @@ def get_webp_url(media_list):
             return None
 def upload_video(token, title, description, video_path, url_poster, lang, cat, email, password):
     global global_proxy, total
+    update_log(f"[{email}:{password}] upload video {video_path}")
     lang = get_language_code(lang)
     cat = check_category(cat)
     h = {
