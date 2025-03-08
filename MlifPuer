@@ -174,6 +174,7 @@ def login(data):
                 'Sec-Ch-Ua-Platform':'"Windows"',
             }
             a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+            print(a.json())
             if "The user does not exist" in a.text:
                 update_log(f"Account {email} không tồn tại")
                 return None
@@ -211,6 +212,7 @@ def login(data):
     while True:
         try:
             a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+            print(a.json())
             if "Password is incorrect" in a.text:
                 update_log(f"Password của account {email} không đúng")
                 return None
@@ -706,8 +708,8 @@ def login_post(lock):
                 update_log(f"{acc.split("|")}:Downloading {name}...")
                 video_path, url_poster = download_torrent(magnet, thumnbail)
                 update_log(f"{acc.split('|')[0]}:Download {name} success")
-                lang = acc.split("|")[4]
-                cat = acc.split("|")[5]
+                lang = acc.split("|")[3]
+                cat = acc.split("|")[4]
                 email = acc.split("|")[0]
                 password = acc.split("|")[1]
                 upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
