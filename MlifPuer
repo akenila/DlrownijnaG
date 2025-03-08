@@ -474,7 +474,7 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
                 headers=h_update,
                 data=file_content,
             )
-            update_log(f"[{email}:{password}] Đã upload {len(file_content)} bytes")
+            update_log(f"[{email}:{password}] Đã upload {response.headers["upload-offset"]} bytes")
             if int(response.headers["upload-offset"])==int(len(file_content)):
                 break
             else:
