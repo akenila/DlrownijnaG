@@ -276,7 +276,6 @@ def download_torrent(magnet_link, thumbnail=None):
                 "-s16", "-x16", "--bt-max-peers=200",
                 "--file-allocation=none",
                 "--bt-save-metadata",
-                "--select-file=1",
                 "--always-resume=false",
                 "--check-integrity=false",
                 "--allow-overwrite=true",
