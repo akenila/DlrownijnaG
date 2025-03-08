@@ -452,7 +452,7 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
                 headers=h_update,
                 data=file_content,
             )
-            print(response.headers["upload-offset"], len(file_content))
+            update_log(f"[{email}:{password}] Đã upload {len(file_content)} bytes")
             if int(response.headers["upload-offset"])==int(len(file_content)):
                 break
             else:
@@ -645,31 +645,30 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
     
     # Step 2: Search for torrent using py1337x
     torrent_link = None
-    with lock:
-        while True:
-            try:
-                update_log(f"Searching for torrent: {movie_title}")
-                # Initialize torrent client
-                torrent = Py1337x()
-                
-                # Search for movie torrent
-                search_query = f"{movie_title}"
-                print(f"Searching for torrent: {search_query}")
-                results = torrent.search(search_query, category="Movies")
-                
-                if results.items:
-                    # Get first torrent result
-                    torrent_details = results.items[0]
+    while True:
+        try:
+            update_log(f"Searching for torrent: {movie_title}")
+            # Initialize torrent client
+            torrent = Py1337x()
+            
+            # Search for movie torrent
+            search_query = f"{movie_title}"
+            print(f"Searching for torrent: {search_query}")
+            results = torrent.search(search_query, category="Movies")
+            
+            if results.items:
+                # Get first torrent result
+                torrent_details = results.items[0]
 
-                    torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
-                    magnet_link = torrent_link.magnet_link
-                    title = torrent_details.name
-                    des = torrent_link.description
+                torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
+                magnet_link = torrent_link.magnet_link
+                title = torrent_details.name
+                des = torrent_link.description
 
-                break
-            except Exception as e:
-                pass
-            time.sleep(5)
+            break
+        except Exception as e:
+            pass
+        time.sleep(5)
     update_log(f"Found torrent: {movie_title}")
     # Step 3: Get subtitles from OpenSubtitle
     if "https://" in torrent_link.thumbnail or "http://" in torrent_link.thumbnail:
