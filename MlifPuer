@@ -236,9 +236,6 @@ def get_data_torrent(keyword):
             pass
 def download_image(url, folder="./ImageData", filename=None):
     try:
-        # Generate unique filename using timestamp
-        
-        # Download image using requests
         response = requests.get(url, proxies=global_proxy)
         response.raise_for_status()  # Raise exception for bad status codes
         
@@ -614,11 +611,17 @@ def get_random_movie(api_key: str, genre: str):
         movie_response.raise_for_status()
         
         imdb_id = movie_response.json()["imdb_id"]
+        poster_path = movie.get("poster_path")
+        thumbnail_url = None
+        if poster_path:
+            thumbnail_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
+        print(f"thumbnail_url: {thumbnail_url}")
         
         return {
             "title": movie["title"],
             "imdb_id": imdb_id,
-            "release_date": movie["release_date"]
+            "release_date": movie["release_date"],
+            "thumbnail_url": thumbnail_url
         }
         
     except Exception as e:
@@ -636,6 +639,7 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
     movie_title = movie["title"]
     imdb_id = movie["imdb_id"]
     release_year = movie["release_date"].split("-")[0]
+    thumbnail_url = movie["thumbnail_url"]
     
     update_log(f"Found movie: {movie_title} ({release_year})")
     
@@ -668,13 +672,16 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
             time.sleep(5)
     update_log(f"Found torrent: {movie_title}")
     # Step 3: Get subtitles from OpenSubtitle
-    
-    return {
+    if "https://" in torrent_link.thumbnail or "http://" in torrent_link.thumbnail:
+        thumbnail_url = torrent_link.thumbnail   
+    else:
+        thumbnail_url = movie["thumbnail_url"]                                                                                                                                                 
+    return {                                                                                                                                                
         "title": title,
         "magnet": magnet_link,
-        "thumbnail": torrent_link.thumbnail,
+        "thumbnail": thumbnail_url,                    
         "description": des
-    }
+    } 
 def format_time(td):
     total_seconds = int(td.total_seconds())
     hours = total_seconds // 3600
