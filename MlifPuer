@@ -151,6 +151,7 @@ def load_data_file():
 def login(data):
     email = data.split("|")[0]
     password = data.split("|")[1]
+    update_log(f"Đang đăng nhập account {email}")
     token_login = ""
     global global_proxy
     while True:
