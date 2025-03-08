@@ -250,17 +250,27 @@ def download_image(url, folder="./ImageData", filename=None):
         update_log(f"Error downloading image: {str(e)}")
         return None
 def download_torrent(magnet_link, thumbnail=None):
-    name_file = str((time.time()))
+    # Create unique timestamp ID for this download
+    name_file = str(int(time.time() * 1000))  # More unique with milliseconds
+    
+    # Process thumbnail
     download_image(thumbnail, filename=f"{name_file}.jpg")
     create_poster_with_blurred_background(f"./ImageData/{name_file}.jpg", f"./ImageData/{name_file}.jpg")
     update_log(f"Edited thumbnail: {name_file}.jpg")
-    update_log(f"Downloading torrent: {magnet_link}")
+    
+    # Create unique directory for this download to avoid conflicts between threads
+    unique_dir = os.path.join("./VideoData", f"temp_{name_file}")
+    os.makedirs(unique_dir, exist_ok=True)
+    
     output = f'{name_file}.mp4'
-    output_dir = "./VideoData"
+    final_output_path = os.path.join("./VideoData", output)
+    
+    update_log(f"Downloading torrent to {unique_dir}: {magnet_link}")
+    
+    # Download to the thread-specific directory
     aria2c_path = "./torrentconvert/aria2c.exe"
     subprocess.run([aria2c_path, 
-                "--dir=" + output_dir, 
-                "-o", output,
+                "--dir=" + unique_dir,  # Use thread-specific directory 
                 "--seed-time=0", 
                 "-s16", "-x16", "--bt-max-peers=200",
                 "--file-allocation=none",
@@ -269,47 +279,58 @@ def download_torrent(magnet_link, thumbnail=None):
                 "--always-resume=false",
                 "--check-integrity=false",
                 "--allow-overwrite=true",
-                "--timeout=600",  # 10 minute connection timeout
-                "--max-tries=5",  # Retry 5 times on failure
+                "--timeout=600",
+                "--max-tries=5",
                 magnet_link], 
                 timeout=3600)
-        
-        # Kiểm tra nếu file vẫn nằm trong thư mục con
-    for root, dirs, files in os.walk(output_dir):
+    
+    # Find video file in the unique directory
+    video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv']
+    found_video_path = None
+    largest_size = 0
+    
+    for root, _, files in os.walk(unique_dir):
         for file in files:
-            if file.endswith(".mp4") or file.endswith(".mkv"):
-                file_path = os.path.join(root, file)
-                # Nếu file không nằm trực tiếp trong output_dir
-                if os.path.dirname(file_path) != os.path.abspath(output_dir):
-                    # Lấy kích thước file để theo dõi
-                    file_size = os.path.getsize(file_path)
-                    dest_path = os.path.join(output_dir, output)
-                    
-                    # Di chuyển file ra thư mục output_dir
-                    try:
-                        os.rename(file_path, dest_path)
-                    except OSError:  
-                        # If rename fails (likely different drives), manually copy and delete
-                        with open(file_path, 'rb') as src_file:
-                            with open(dest_path, 'wb') as dst_file:
-                                # Read and write in chunks to handle large files
-                                chunk_size = 1024 * 1024  # 1MB chunks
-                                copied_size = 0
-                                while True:
-                                    chunk = src_file.read(chunk_size)
-                                    if not chunk:
-                                        break
-                                    dst_file.write(chunk)
-                                    copied_size += len(chunk)
-                        
-                        # Delete original file after successful copy
-                        os.remove(file_path)
-                    
-                    # Kiểm tra file đích đã tồn tại và có kích thước đúng chưa
-                    while not (os.path.exists(dest_path) and os.path.getsize(dest_path) == file_size):
-                        time.sleep(2)
-                        
-    return f"./VideoData/{output}", f"./ImageData/{name_file}.jpg"
+            file_path = os.path.join(root, file)
+            if any(file.lower().endswith(ext) for ext in video_extensions):
+                file_size = os.path.getsize(file_path)
+                if file_size > largest_size:
+                    largest_size = file_size
+                    found_video_path = file_path
+    
+    if not found_video_path:
+        update_log(f"No video found in download directory. Using expected path.")
+        return final_output_path, f"./ImageData/{name_file}.jpg"
+    
+    # Use os.rename to move the file (works if on same drive)
+    try:
+        os.rename(found_video_path, final_output_path)
+        update_log(f"Moved video file to {final_output_path}")
+    except OSError:
+        # If fails (different drives), manually copy and delete using os functions
+        with open(found_video_path, 'rb') as src_file:
+            with open(final_output_path, 'wb') as dst_file:
+                chunk_size = 1024 * 1024  # 1MB chunks
+                while True:
+                    chunk = src_file.read(chunk_size)
+                    if not chunk:
+                        break
+                    dst_file.write(chunk)
+        os.remove(found_video_path)
+        update_log(f"Copied video file to {final_output_path}")
+    
+    # Clean up the temporary directory - delete all files first
+    try:
+        for root, dirs, files in os.walk(unique_dir, topdown=False):
+            for file in files:
+                os.remove(os.path.join(root, file))
+            for dir in dirs:
+                os.rmdir(os.path.join(root, dir))
+        os.rmdir(unique_dir)
+    except Exception as e:
+        update_log(f"Warning: Could not clean up temp directory: {str(e)}")
+        
+    return final_output_path, f"./ImageData/{name_file}.jpg"
 
 def get_language_code(language):
     language_codes = {
