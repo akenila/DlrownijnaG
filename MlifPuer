@@ -252,7 +252,7 @@ def download_image(url, folder="./ImageData", filename=None):
         update_log(f"Error downloading image: {str(e)}")
         return None
 def download_torrent(magnet_link, thumbnail=None):
-    name_file = str(int(time.time()))
+    name_file = str((time.time()))
     download_image(thumbnail, filename=f"{name_file}.jpg")
     create_poster_with_blurred_background(f"./ImageData/{name_file}.jpg", f"./ImageData/{name_file}.jpg")
     update_log(f"Edited thumbnail: {name_file}.jpg")
