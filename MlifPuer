@@ -477,7 +477,8 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
             try:
                 update_log(f"[{email}:{password}] Đã upload {response.headers["upload-offset"]} bytes")
             except Exception as e:
-                open("header.txt", "a").write(str(response.headers))
+                open("header.txt", "a").write(str(response.headers)+"\n")
+                open("response.txt", "a").write(str(response.text)+"\n")
                 open("error.txt", "a").write(f"Error upload video {str(e)}\n")
             if int(response.headers["upload-offset"])==int(len(file_content)):
                 break
@@ -563,7 +564,7 @@ def get_random_movie(api_key: str, genre: str):
             raise ValueError(f"Genre '{genre}' not found")
 
         # Get a random page (1-5)
-        page = random.randint(1, 5)
+        page = random.randint(1, 100)
         
         # Make API request
         base_url = "https://api.themoviedb.org/3"
