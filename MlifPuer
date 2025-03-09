@@ -477,7 +477,8 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
             try:
                 update_log(f"[{email}:{password}] Đã upload {response.headers["upload-offset"]} bytes")
             except Exception as e:
-                open("error.txt", "a").write(f"Error upload video {str(e)}")
+                open("header.txt", "a").write(str(response.headers))
+                open("error.txt", "a").write(f"Error upload video {str(e)}\n")
             if int(response.headers["upload-offset"])==int(len(file_content)):
                 break
             else:
@@ -490,6 +491,7 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
                 upload_proxy = None
             time.sleep(5)
         except Exception as e:
+            open("error.txt", "a").write(f"Error upload video {str(e)}\n")
             pass
 
     if response.status_code == 204:
