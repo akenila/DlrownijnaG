@@ -360,6 +360,85 @@ def get_webp_url(media_list):
                 if url.endswith('origin.webp'):
                     return url
             return None
+
+def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=9*1024*1024):  # 5MB chunks
+    file_size = os.path.getsize(file_path)
+    offset = 0
+    
+    with open(file_path, 'rb') as f:
+        while offset < file_size:
+            f.seek(offset)
+            chunk = f.read(chunk_size)
+            
+            # Configure retry parameters
+            max_retries = 10
+            retry_count = 0
+            retry_delay = 3  # Start with 3 seconds delay
+            
+            # Keep trying this chunk until success or max retries reached
+            while retry_count <= max_retries:
+                headers = {
+                    'Authorization': f'Bearer {update_token}',
+                    'Content-Type': 'application/offset+octet-stream',
+                    'Upload-Offset': str(offset),
+                    'Tus-Resumable': '1.0.0',
+                }
+                
+                update_log(f"[{email}] Uploading chunk: {offset}-{offset+len(chunk)} of {file_size} (Attempt {retry_count+1})")
+                
+                try:
+                    response = requests.patch(
+                        upload_url,
+                        headers=headers,
+                        data=chunk,
+                        timeout=60  # Add timeout to prevent hanging
+                    )
+                    
+                    if response.status_code == 204:
+                        new_offset = int(response.headers.get("upload-offset", offset))
+                        update_log(f"[{email}] Successfully uploaded: {new_offset} bytes")
+                        offset = new_offset
+                        break  # Break out of retry loop and move to next chunk
+                    elif response.status_code == 413:
+                        # Request Entity Too Large - reduce chunk size and retry
+                        update_log(f"[{email}] 413 Error: Reducing chunk size and retrying")
+                        chunk_size = chunk_size // 2
+                        if chunk_size < 1024*1024:  # Don't go below 1MB
+                            chunk_size = 1024*1024
+                        break  # Break retry loop to re-read with smaller chunk size
+                    else:
+                        update_log(f"[{email}] Error uploading chunk: {response.status_code}")
+                        retry_count += 1
+                        
+                        if retry_count > max_retries:
+                            update_log(f"[{email}] Max retries exceeded for chunk at offset {offset}")
+                            return False
+                            
+                        print(f"Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                        retry_delay = min(retry_delay * 2, 60)  # Exponential backoff, max 60 seconds
+                        
+                except Exception as e:
+                    update_log(f"[{email}] Exception during upload: {str(e)}")
+                    retry_count += 1
+                    
+                    if retry_count > max_retries:
+                        update_log(f"[{email}] Max retries exceeded for chunk at offset {offset}")
+                        return False
+                        
+                    update_log(f"[{email}] Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, 60)  # Exponential backoff, max 60 seconds
+            
+            # If we've exhausted all retries without success, exit
+            if retry_count > max_retries:
+                return False
+                
+            # Small pause between chunks on success
+            time.sleep(1)
+            
+    return True
+
 def upload_video(token, title, description, video_path, url_poster, lang, cat, email, password):
     global global_proxy, total
     update_log(f"[{email}:{password}] upload video {video_path}")
@@ -457,49 +536,12 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
 
     # Tải lên file video bằng yêu cầu PATCH
     update_log(f"[{email}:{password}] Đang upload video {title}")
-    h_update = {
-                'Authorization': f'Bearer {update_token}',
-                'Content-Type': 'application/offset+octet-stream',
-                'Upload-Offset': '0',
-                'Tus-Resumable': '1.0.0',
-            }
-    upload_proxy = {
-    "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
-    "https":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
-    }
-    while True:
-        try:
-            response = requests.patch(
-                upload_url,
-                headers=h_update,
-                data=file_content,
-            )
-            try:
-                update_log(f"[{email}:{password}] Đã upload {response.headers["upload-offset"]} bytes")
-            except Exception as e:
-                open("header.txt", "a").write(str(response.headers)+"\n")
-                open("response.txt", "a").write(str(response.text)+"\n")
-                open("error.txt", "a").write(f"Error upload video {str(e)}\n")
-            if int(response.headers["upload-offset"])==int(len(file_content)):
-                break
-            else:
-                h_update = {
-                    'Authorization': f'Bearer {update_token}',
-                    'Content-Type': 'application/offset+octet-stream',
-                    'Upload-Offset': response.headers["upload-offset"],
-                    'Tus-Resumable': '1.0.0',
-                }
-                upload_proxy = None
-            time.sleep(5)
-        except Exception as e:
-            open("error.txt", "a").write(f"Error upload video {str(e)}\n")
-            pass
-
-    if response.status_code == 204:
-        update_log(f"[{email}:{password}] Upload video thành công")
+    success = upload_in_chunks(email, video_path, upload_url, update_token)
+    if success:
+        update_log(f"[{email}:{password}] upload video {title} success")
     else:
-        update_log(f"[{email}:{password}] Upload video thất bại")
-        return False
+        update_log(f"[{email}:{password}] upload video {title} failed")
+        return None
     
 
     while True:
