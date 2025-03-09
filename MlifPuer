@@ -184,6 +184,15 @@ def login(data):
             client_salt = a.json()["data"]["client_salt"]
             break
         except Exception as e:
+            tb = e.__traceback__
+            error_message = f"Exception: {e} | "
+            while tb is not None:
+                filename = tb.tb_frame.f_code.co_filename
+                lineno = tb.tb_lineno
+                function_name = tb.tb_frame.f_code.co_name
+                error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+                tb = tb.tb_next
+            open("error.txt", "a").write(error_message)
             continue
     def hash_password(pss, client_salt, server_salt):
         x = hashlib.sha256((pss + client_salt).encode()).digest()
@@ -657,6 +666,7 @@ def get_random_movie(api_key: str, genre: str):
         
         # Get IMDB ID
         movie_id = movie["id"]
+        desc = movie["overview"]
         movie_url = f"{base_url}/movie/{movie_id}/external_ids"
         movie_response = requests.get(movie_url, params={"api_key": api_key})
         movie_response.raise_for_status()
@@ -672,7 +682,8 @@ def get_random_movie(api_key: str, genre: str):
             "title": movie["title"],
             "imdb_id": imdb_id,
             "release_date": movie["release_date"],
-            "thumbnail_url": thumbnail_url
+            "thumbnail_url": thumbnail_url,
+            "description": desc
         }
         
     except Exception as e:
@@ -691,6 +702,7 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
     imdb_id = movie["imdb_id"]
     release_year = movie["release_date"].split("-")[0]
     thumbnail_url = movie["thumbnail_url"]
+    description = movie["description"]
     
     update_log(f"Found movie: {movie_title} ({release_year})")
     
@@ -713,8 +725,6 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
 
                 torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
                 magnet_link = torrent_link.magnet_link
-                title = torrent_details.name
-                des = torrent_link.description
 
             break
         except Exception as e:
@@ -722,15 +732,12 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
         time.sleep(5)
     update_log(f"Found torrent: {movie_title}")
     # Step 3: Get subtitles from OpenSubtitle
-    if "https://" in torrent_link.thumbnail or "http://" in torrent_link.thumbnail:
-        thumbnail_url = torrent_link.thumbnail   
-    else:
-        thumbnail_url = movie["thumbnail_url"]                                                                                                                                                 
+    thumbnail_url = movie["thumbnail_url"]                                                                                                                                                 
     return {                                                                                                                                                
-        "title": title,
+        "title": movie_title,
         "magnet": magnet_link,
         "thumbnail": thumbnail_url,                    
-        "description": des
+        "description": description
     } 
 def format_time(td):
     total_seconds = int(td.total_seconds())
