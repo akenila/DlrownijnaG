@@ -176,6 +176,11 @@ def login(data):
                 'Sec-Ch-Ua-Platform':'"Windows"',
             }
             a = requests.post("https://gw.ganjingworld.com/v1.0c/signinpw", headers=h, json=d, proxies=global_proxy)
+            try:
+                tesstt = a.json()
+            except:
+                open("response_login.txt", "a").write(a.text+"\n")
+                continue
             print(a.json())
             if "The user does not exist" in a.text:
                 update_log(f"Account {email} không tồn tại")
