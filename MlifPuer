@@ -361,7 +361,7 @@ def get_webp_url(media_list):
                     return url
             return None
 
-def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=9*1024*1024):  # 5MB chunks
+def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=5*1024*1024):  # 5MB chunks
     file_size = os.path.getsize(file_path)
     offset = 0
     
