@@ -189,7 +189,6 @@ def download_video(url, email, password):
         'postprocessors': [],
         'overwrites': True,
         'merge_output_format': 'mp4',
-        "cookiefile": "cookies.txt",
         'nocheckcertificate': True,
         }
         
