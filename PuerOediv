@@ -62,113 +62,8 @@ def convert_cookie_to_netscape(input_file, output_file):
     except Exception as e:
         print(f"Error converting cookies: {str(e)}")
         return False
-def update_log(message):
-    frame_text_box.configure(state = "normal")
-    frame_text_box.insert(customtkinter.END, f'{message}\n')
-    frame_text_box.configure(state = "disabled")
 convert_cookie_to_netscape('ck.txt', 'cookies.txt')
-def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=10*1000*1000):  # 10MB chunks
-    file_size = os.path.getsize(file_path)
-    offset = 0
-    
-    with open(file_path, 'rb') as f:
-        while offset < file_size:
-            f.seek(offset)
-            chunk = f.read(chunk_size)
-            
-            # Configure retry parameters
-            max_retries = 10
-            retry_count = 0
-            retry_delay = 3  # Start with 3 seconds delay
-            
-            # Keep trying this chunk until success or max retries reached
-            while retry_count <= max_retries:
-                headers = {
-                    'Authorization': f'Bearer {update_token}',
-                    'Content-Type': 'application/offset+octet-stream',
-                    'Upload-Offset': str(offset),
-                    'Tus-Resumable': '1.0.0',
-                }
-                
-                update_log(f"[{email}] Uploading chunk: {offset}-{offset+len(chunk)} of {file_size} (Attempt {retry_count+1})")
-                
-                try:
-                    response = requests.patch(
-                        upload_url,
-                        headers=headers,
-                        data=chunk,
-                    )
-                    
-                    if response.status_code == 204:
-                        new_offset = int(response.headers.get("upload-offset", offset))
-                        update_log(f"[{email}] Successfully uploaded: {new_offset} bytes")
-                        offset = new_offset
-                        break  # Success! Move to the next chunk
-                    elif response.status_code == 409:  # Conflict
-                        update_log(f"[{email}] 409 Conflict: Server and client offsets don't match")
-                        # Try to get current server offset
-                        try:
-                            head_response = requests.head(upload_url, headers={'Authorization': f'Bearer {update_token}'})
-                            if head_response.status_code == 200 and 'upload-offset' in head_response.headers:
-                                server_offset = int(head_response.headers['upload-offset'])
-                                update_log(f"[{email}] Server reports offset: {server_offset}")
-                                offset = server_offset
-                                break  # Reset and try with correct offset
-                        except Exception:
-                            pass  # If HEAD request fails, continue with normal retry
-                    elif response.status_code == 504:  # Gateway Timeout
-                        update_log(f"[{email}] 504 Gateway Timeout: Server is processing slowly")
-                        # Use longer delay for timeouts
-                        timeout_delay = retry_delay * 2
-                        update_log(f"[{email}] Waiting {timeout_delay} seconds before retry...")
-                        time.sleep(timeout_delay)
-                        retry_delay = min(retry_delay * 2, 120)  # Longer max delay for timeouts (2 minutes)
-                    elif response.status_code == 413:  # Request Entity Too Large
-                        update_log(f"[{email}] 413 Error: Reducing chunk size and retrying")
-                        chunk_size = chunk_size // 2
-                        if chunk_size < 1024*1024:  # Don't go below 1MB
-                            chunk_size = 1024*1024
-                        break  # Break retry loop to re-read with smaller chunk size
-                    else:
-                        update_log(f"[{email}] Error uploading chunk: {response.status_code}")
-                        retry_count += 1
-                        
-                        if retry_count > max_retries:
-                            update_log(f"[{email}] Max retries exceeded for chunk at offset {offset}")
-                            return False
-                            
-                        update_log(f"[{email}] Retrying in {retry_delay} seconds...")
-                        time.sleep(retry_delay)
-                        retry_delay = min(retry_delay * 2, 60)  # Exponential backoff, max 60 seconds
-                        
-                except requests.exceptions.Timeout:
-                    update_log(f"[{email}] Request timed out")
-                    retry_count += 1
-                    # Use longer delay for timeouts
-                    timeout_delay = retry_delay * 2
-                    update_log(f"[{email}] Waiting {timeout_delay} seconds before retry...")
-                    time.sleep(timeout_delay)
-                    retry_delay = min(retry_delay * 2, 120)  # Longer max delay for timeouts
-                except Exception as e:
-                    update_log(f"[{email}] Exception during upload: {str(e)}")
-                    retry_count += 1
-                    
-                    if retry_count > max_retries:
-                        update_log(f"[{email}] Max retries exceeded for chunk at offset {offset}")
-                        return False
-                        
-                    update_log(f"[{email}] Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                    retry_delay = min(retry_delay * 2, 60)  # Exponential backoff, max 60 seconds
-            
-            # If we've exhausted all retries without success, exit
-            if retry_count > max_retries:
-                return False
-                
-            # Small pause between chunks on success
-            time.sleep(1)
-            
-    return True
+
 def download_video(url, email, password):
     name_file = str(time.time())
     aaa = f'./VideoData/{name_file}.mp4'
@@ -464,16 +359,47 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
     frame_text_box.configure(state = "normal")
     frame_text_box.insert(customtkinter.END, f'[{email}:{password}] đang upload video\n')
     frame_text_box.configure(state = "disabled")
-    success = upload_in_chunks(email, video_path, upload_url, update_token)
-    if not success:
+    h_update = {
+                'Authorization': f'Bearer {update_token}',
+                'Content-Type': 'application/offset+octet-stream',
+                'Upload-Offset': '0',
+                'Tus-Resumable': '1.0.0',
+            }
+    upload_proxy = {
+    "http":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
+    "https":"http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
+    }
+    while True:
+        try:
+            response = requests.patch(
+                upload_url,
+                headers=h_update,
+                data=file_content,
+            )
+            print(response.headers["upload-offset"], len(file_content))
+            if int(response.headers["upload-offset"])==int(len(file_content)):
+                break
+            else:
+                h_update = {
+                    'Authorization': f'Bearer {update_token}',
+                    'Content-Type': 'application/offset+octet-stream',
+                    'Upload-Offset': response.headers["upload-offset"],
+                    'Tus-Resumable': '1.0.0',
+                }
+                upload_proxy = None
+            time.sleep(5)
+        except Exception as e:
+            pass
+
+    if response.status_code == 204:
         frame_text_box.configure(state = "normal")
-        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] upload video không thành công\n')
+        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thành công\n')
         frame_text_box.configure(state = "disabled")
-        return False
     else:
         frame_text_box.configure(state = "normal")
-        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] upload video thành công\n')
+        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thất bại\n')
         frame_text_box.configure(state = "disabled")
+        return False
     
 
     while True:
