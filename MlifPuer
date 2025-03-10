@@ -841,15 +841,6 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
 
             break
         except Exception as e:
-            tb = e.__traceback__
-            error_message = f"Exception: {e} | "
-            while tb is not None:
-                filename = tb.tb_frame.f_code.co_filename
-                lineno = tb.tb_lineno
-                function_name = tb.tb_frame.f_code.co_name
-                error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
-                tb = tb.tb_next
-            open("error.txt", "a").write(error_message)
             pass
         time.sleep(5)
     update_log(f"Found torrent: {movie_title}")
