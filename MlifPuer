@@ -1,3 +1,117 @@
+def check_subtitle_info(video_file):
+    cmd = [
+        "./ffmpeg/bin/ffprobe.exe", "-v", "quiet",
+        "-select_streams", "s", "-show_streams",
+        "-of", "json", video_file
+    ]
+    
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        data = json.loads(result.stdout)
+        
+        if not data.get("streams"):
+            return False, False
+        for stream in data.get("streams", []):
+            language = stream.get("tags", {}).get("language", "").lower()
+            title = stream.get("tags", {}).get("title", "").lower()
+            
+            if language in ["vi", "vie", "viet"] or "vietnamese" in title or "việt" in title:
+                return True, True
+                
+        return True, False 
+        
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        print(f"Lỗi khi kiểm tra phụ đề: {e}")
+        return False, False
+
+def remove_subtitles(video_file, output_file):
+    """Loại bỏ phụ đề có sẵn trong video"""
+    cmd = [
+        "./ffmpeg/bin/ffmpeg.exe", "-y",
+        "-i", video_file,
+        "-map", "0:v", "-map", "0:a", 
+        "-c:v", "copy", "-c:a", "copy",
+        output_file
+    ]
+    
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"Đã tạo video không có phụ đề: {Path(output_file).name}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Lỗi khi loại bỏ phụ đề: {e}")
+        return False
+
+def add_subtitles_to_video(video_file, subtitle_file, output_file=None):
+    video_path = Path(video_file)
+    srt_path = Path(subtitle_file)
+    if not video_path.exists():
+        raise FileNotFoundError(f"File video không tồn tại: {video_file}")
+    if not srt_path.exists():
+        raise FileNotFoundError(f"File phụ đề không tồn tại: {subtitle_file}")
+    if output_file is None:
+        output_file = str(video_path.parent / f"{video_path.stem}_subbed{video_path.suffix}")
+    cmd = [
+        "./ffmpeg/bin/ffmpeg.exe", "-y",
+        "-i", str(video_path),
+        "-vf", f"subtitles='{str(srt_path)}'",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-threads", "0",
+        "-c:a", "copy",
+        output_file
+    ]
+    
+    print(f"Đang xử lý: {video_path.name} + {srt_path.name} -> {Path(output_file).name}")
+    
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"Hoàn thành! File đã được lưu tại: {output_file}")
+        return output_file
+    except subprocess.CalledProcessError as e:
+        print(f"Lỗi khi xử lý video: {e}")
+        return None
+
+def process_video_with_vietnamese_subtitles(video_file, subtitle_file, output_file=None, overwrite=False):
+    video_path = Path(video_file)
+    
+    # Xử lý trường hợp ghi đè lên file gốc
+    is_overwriting = overwrite or (output_file == str(video_path))
+    
+    # Nếu ghi đè, sử dụng file tạm cho output
+    if is_overwriting:
+        final_output = str(video_path)
+        output_file = str(video_path.parent / f"{video_path.stem}_temp_output{video_path.suffix}")
+    elif output_file is None:
+        output_file = str(video_path.parent / f"{video_path.stem}_vi{video_path.suffix}")
+    
+    # Kiểm tra phụ đề hiện tại
+    has_subtitles, is_vietnamese = check_subtitle_info(video_file)
+    
+    if has_subtitles and is_vietnamese:
+        print("Video đã có phụ đề tiếng Việt. Không cần xử lý thêm.")
+        return video_file
+    temp_file = None
+    if has_subtitles:
+        print("Đang gỡ bỏ phụ đề có sẵn...")
+        temp_file = str(video_path.parent / f"{video_path.stem}_temp_no_sub{video_path.suffix}")
+        if remove_subtitles(video_file, temp_file):
+            video_file = temp_file
+    result = add_subtitles_to_video(video_file, subtitle_file, output_file)
+    if temp_file and os.path.exists(temp_file):
+        os.remove(temp_file)
+        print(f"Đã xóa file tạm: {Path(temp_file).name}")
+    if is_overwriting and result:
+        try:
+            os.remove(final_output)
+            os.rename(result, final_output)
+            print(f"Đã ghi đè lên file gốc: {Path(final_output).name}")
+            return final_output
+        except Exception as e:
+            print(f"Lỗi khi ghi đè file: {e}")
+            return result
+        
+    return result
 def create_poster_with_blurred_background(input_path, output_path, blur_radius=4, darken_factor=0.4):
     # Mở ảnh gốc
     original_img = Image.open(input_path)
@@ -237,17 +351,6 @@ def login(data):
             return access_token
         except Exception as e: 
             print(f"Error login {str(e)}") 
-            pass
-def get_data_torrent(keyword):
-    torrents = py1337x.Py1337x()
-    data = []
-    while True:
-        try:
-            results = torrents.search(keyword, page=1)
-            for i in results.items:
-                data.append(i.name + "|" + i.magnet_link+ "|" + i.thumbnail+ "|" + i.description)
-            return data
-        except Exception as e:
             pass
 def download_image(url, folder="./ImageData", filename=None):
     try:
@@ -723,13 +826,18 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
             search_query = f"{movie_title}"
             print(f"Searching for torrent: {search_query}")
             results = torrent.search(search_query, category="Movies")
-            
+            torrent_link = None
             if results.items:
                 # Get first torrent result
-                torrent_details = results.items[0]
+                for item in results.items:
+                    info = torrent.info(item.torrent_id)
+                    if "1080p" in info.name.lower() and movie_title == info.short_name:
+                        torrent_link = info.magnet_link
+                        break
+                if torrent_link==None:
+                    info = torrent.info(results.items[0].torrent_id)
+                    torrent_link = info.magnet_link
 
-                torrent_link = torrent.info(torrent_id=torrent_details.torrent_id)
-                magnet_link = torrent_link.magnet_link
 
             break
         except Exception as e:
@@ -740,7 +848,7 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
     thumbnail_url = movie["thumbnail_url"]                                                                                                                                                 
     return {                                                                                                                                                
         "title": movie_title,
-        "magnet": magnet_link,
+        "magnet": torrent_link,
         "thumbnail": thumbnail_url,                    
         "description": description
     } 
