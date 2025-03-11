@@ -84,8 +84,8 @@ def download_video(url, email, password):
         'postprocessors': [],
         'overwrites': True,
         'merge_output_format': 'mp4',
-        'nocheckcertificate': True,
-        }
+ 
+}
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             filename = ydl.prepare_filename(ydl.extract_info(url, download=False))
