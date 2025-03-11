@@ -519,14 +519,20 @@ def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=10*1
                         update_log(f"[{email}] 409 Conflict: Server and client offsets don't match")
                         # Try to get current server offset
                         try:
-                            head_response = requests.head(upload_url, headers={'Authorization': f'Bearer {update_token}'})
+                            head_response = requests.head(
+                                upload_url, 
+                                headers={
+                                    'Authorization': f'Bearer {update_token}',
+                                    'Tus-Resumable': '1.0.0'
+                                }
+                            )
                             if head_response.status_code == 200 and 'upload-offset' in head_response.headers:
                                 server_offset = int(head_response.headers['upload-offset'])
                                 update_log(f"[{email}] Server reports offset: {server_offset}")
                                 offset = server_offset
-                                break  # Reset and try with correct offset
-                        except Exception:
-                            pass  # If HEAD request fails, continue with normal retry
+                                break 
+                        except Exception as e:
+                            update_log(f"[{email}] Error checking server offset: {str(e)}")
                     elif response.status_code == 504:  # Gateway Timeout
                         update_log(f"[{email}] 504 Gateway Timeout: Server is processing slowly")
                         # Use longer delay for timeouts
