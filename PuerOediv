@@ -263,8 +263,35 @@ def update_log(text):
     frame_text_box.insert(customtkinter.END, f'{text}\n')
     frame_text_box.configure(state = "disabled")
 
-def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=1000):  # 10MB chunks
+def upload_in_chunks(email, file_path, upload_url, update_token):  # 10MB chunks
     file_size = os.path.getsize(file_path)
+    file_size_str = str(file_size)
+    if len(file_size_str) <= 2:  # Nếu file < 100 bytes
+        chunk_size = 1000  # Mặc định nếu file quá nhỏ
+    else:
+        # Lấy số hàng to thứ 2
+        magnitude = 10 ** (len(file_size_str) - 2)  # Đổi từ -2 thành -3 cho vị trí thứ 2
+        first_digits = file_size // magnitude
+        # Làm tròn xuống thành 1, 2, 5, 10, 20, 50, 100
+        if first_digits >= 100:
+            chunk_multiplier = 100
+        elif first_digits >= 50:
+            chunk_multiplier = 50
+        elif first_digits >= 20:
+            chunk_multiplier = 20
+        elif first_digits >= 10:
+            chunk_multiplier = 10
+        elif first_digits >= 5:
+            chunk_multiplier = 5
+        elif first_digits >= 2:
+            chunk_multiplier = 2
+        else:
+            chunk_multiplier = 1
+        chunk_size = chunk_multiplier * magnitude
+        
+        # Giới hạn chunk size tối đa 10MB
+        if chunk_size > 10000000:  # 10 triệu bytes (10MB)
+            chunk_size = 10000000
     offset = 0
     
     with open(file_path, 'rb') as f:
@@ -454,33 +481,34 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
     with open(video_path, 'rb') as f:
         file_content = f.read()
     # Tạo yêu cầu POST để khởi tạo việc tải lên
-    response = requests.post(
+    while True:
+        response = requests.post(
         'https://vodapi.cloudokyo.cloud/api/v1/tus/upload',
         headers={
             'Authorization': f'Bearer {update_token}',
             'Upload-Length': str(len(file_content)),  # Kích thước của file
             'Tus-Resumable': '1.0.0',
             "Upload-Metadata":"parent_folders MWdsMGt0a2duaWo3eFpLRTdPWnRkSXZhTTFyZDB1,filename YjA5YTQ3MTItMDczYy00ZTVhLTg0YTktNDMyNjY2Y2Q1N2Q2X3ZpZGVvX21wNC5tcDQ=,filetype dmlkZW8vbXA0,profile_name ZnVsbGJpdHJhdGU=,auto_caption_flag ZmFsc2U=,preview_start MDA6MDA6MDA=,preview_end MDA6MDA6MjA=,priority aGlnaA==,content_type VmlkZW8=,content_id MWdtaTg0NWplMXQ2RnJ1b2NScUltQXRLRjFmbzFj,language ZW4tVVM=,analyze_flag dHJ1ZQ==,channel_id MWdsMGt1MGNqaDU3MlBLTkhxVzY1NFpHQjFvczBj"
-        }
-    )
+            }
+        )
 
-    # Lấy URL để tải lên từ phản hồi
-    upload_url = response.headers['Location']
+        # Lấy URL để tải lên từ phản hồi
+        upload_url = response.headers['Location']
 
-    # Tải lên file video bằng yêu cầu PATCH
-    frame_text_box.configure(state = "normal")
-    frame_text_box.insert(customtkinter.END, f'[{email}:{password}] đang upload video\n')
-    frame_text_box.configure(state = "disabled")
-    success = upload_in_chunks(email, video_path, upload_url, update_token)
-    if not success:
+        # Tải lên file video bằng yêu cầu PATCH
         frame_text_box.configure(state = "normal")
-        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thất bại\n')
+        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] đang upload video\n')
         frame_text_box.configure(state = "disabled")
-        return False
-    else:
-        frame_text_box.configure(state = "normal")
-        frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thành công\n')
-        frame_text_box.configure(state = "disabled")
+        success = upload_in_chunks(email, video_path, upload_url, update_token)
+        if not success:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thất bại, tiến hành upload lại\n')
+            frame_text_box.configure(state = "disabled")
+        else:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Upload video thành công\n')
+            frame_text_box.configure(state = "disabled")
+            break
 
     while True:
         try:
