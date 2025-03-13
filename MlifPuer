@@ -446,6 +446,7 @@ def download_torrent(magnet_link, thumbnail=None):
         os.rmdir(unique_dir)
     except Exception as e:
         update_log(f"Warning: Could not clean up temp directory: {str(e)}")
+    process_video_with_vietnamese_subtitles(final_output_path, "b.srt", final_output_path, True)
         
     return final_output_path, f"./ImageData/{name_file}.jpg"
 
@@ -897,6 +898,7 @@ def login_post(lock):
                 email = acc.split("|")[0]
                 password = acc.split("|")[1]
                 upload_video(token, name, description, video_path, url_poster, lang, cat, email, password)
+            acc_data.append(acc)
     for i in range(threads):
         threading.Thread(target=run, args=(lock,)).start()
 
