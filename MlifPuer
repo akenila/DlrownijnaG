@@ -1,4 +1,3 @@
-
 def check_subtitle_info(video_file):
     cmd = [
         "./ffmpeg/bin/ffprobe.exe", "-v", "quiet",
@@ -90,14 +89,15 @@ def process_video_with_vietnamese_subtitles(video_file, subtitle_file, output_fi
     has_subtitles, is_vietnamese = check_subtitle_info(video_file)
     
     if has_subtitles and is_vietnamese:
-        print("Video đã có phụ đề tiếng Việt. Không cần xử lý thêm.")
+        update_log(f"Video đã có phụ đề tiếng Việt: {video_path.name}")
         return video_file
     temp_file = None
     if has_subtitles:
-        print("Đang gỡ bỏ phụ đề có sẵn...")
+        update_log(f"Video có phụ đề nhưng không phải tiếng Việt: {video_path.name}, tiến hành loại bỏ phụ đề")
         temp_file = str(video_path.parent / f"{video_path.stem}_temp_no_sub{video_path.suffix}")
         if remove_subtitles(video_file, temp_file):
             video_file = temp_file
+    update_log(f"Đang thêm phụ đề cho video: {video_path.name}")
     result = add_subtitles_to_video(video_file, subtitle_file, output_file)
     if temp_file and os.path.exists(temp_file):
         os.remove(temp_file)
@@ -111,7 +111,7 @@ def process_video_with_vietnamese_subtitles(video_file, subtitle_file, output_fi
         except Exception as e:
             print(f"Lỗi khi ghi đè file: {e}")
             return result
-        
+    update_log(f"Đã xử lý xong video: {Path(output_file).name}")
     return result
 def create_poster_with_blurred_background(input_path, output_path, blur_radius=4, darken_factor=0.4):
     # Mở ảnh gốc
@@ -484,12 +484,12 @@ def download_torrent(magnet_link, imdb_id, thumbnail=None):
         imdb_id_numeric = imdb_id.replace("tt", "")
         response = subtitles.search(imdb_id=imdb_id_numeric, languages="vi")
         a = subtitles.download_and_save(response.data[0])
-        move_and_rename_file(a, "Data", f"{name_file}")
-        subtitle_path = os.path.join("./Data", f"{name_file}.srt")
+        move_and_rename_file(a, "VideoData", f"{name_file}")
+        subtitle_path = os.path.join("./VideoData", f"{name_file}.srt")
         
     except Exception as e:
         print(f"Error getting subtitles: {str(e)}")
-    process_video_with_vietnamese_subtitles(final_output_path, f"./Data/{name_file}.srt", final_output_path, True)
+    process_video_with_vietnamese_subtitles(final_output_path, subtitle_path, final_output_path, True)
         
     return final_output_path, f"./ImageData/{name_file}.jpg"
 
