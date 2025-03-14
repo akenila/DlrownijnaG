@@ -367,7 +367,35 @@ def download_image(url, folder="./ImageData", filename=None):
     except Exception as e:
         update_log(f"Error downloading image: {str(e)}")
         return None
-def download_torrent(magnet_link, thumbnail=None):
+def move_and_rename_file(source_file, destination_folder, new_name=None):
+    try:
+        # Check if source file exists
+        if not os.path.isfile(source_file):
+            return f"Error: Source file '{source_file}' does not exist"
+            
+        # Create destination folder if it doesn't exist
+        os.makedirs(destination_folder, exist_ok=True)
+            
+        # Get the file extension
+        _, file_extension = os.path.splitext(source_file)
+        
+        # Determine the new filename
+        if new_name:
+            new_filename = f"{new_name}{file_extension}"
+        else:
+            new_filename = os.path.basename(source_file)
+            
+        # Create the full destination path
+        destination_path = os.path.join(destination_folder, new_filename)
+        
+        # Move and rename the file using os.rename instead of shutil.move
+        os.rename(source_file, destination_path)
+        
+        return destination_path
+        
+    except Exception as e:
+        return f"Error: {str(e)}"
+def download_torrent(magnet_link, imdb_id, thumbnail=None):
     # Create unique timestamp ID for this download
     name_file = str(int(time.time() * 1000))  # More unique with milliseconds
     
@@ -446,7 +474,24 @@ def download_torrent(magnet_link, thumbnail=None):
         os.rmdir(unique_dir)
     except Exception as e:
         update_log(f"Warning: Could not clean up temp directory: {str(e)}")
-    process_video_with_vietnamese_subtitles(final_output_path, "b.srt", final_output_path, True)
+    subtitle_path = None
+    try:
+        # Initialize OpenSubtitles client
+        subtitles = OpenSubtitles("MyApp v1.0.0", "4ovMxmzOtiodjM85kQ2ypCxNiM6aYOVU")
+        
+        # Log in to OpenSubtitles
+        subtitles.login("Tenica", "12112005")
+        
+        # Search for subtitles - remove "tt" prefix from IMDB ID
+        imdb_id_numeric = imdb_id.replace("tt", "")
+        response = subtitles.search(imdb_id=imdb_id_numeric, languages="vi")
+        a = subtitles.download_and_save(response.data[0])
+        move_and_rename_file(a, "Data", f"{name_file}")
+        subtitle_path = os.path.join("./VideoData", f"{name_file}.srt")
+        
+    except Exception as e:
+        print(f"Error getting subtitles: {str(e)}")
+    process_video_with_vietnamese_subtitles(final_output_path, f"./VideoData/{name_file}.srt", final_output_path, True)
         
     return final_output_path, f"./ImageData/{name_file}.jpg"
 
@@ -857,7 +902,8 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
         "title": movie_title,
         "magnet": torrent_link,
         "thumbnail": thumbnail_url,                    
-        "description": description
+        "description": description,
+        "imdb_id": imdb_id
     } 
 def format_time(td):
     total_seconds = int(td.total_seconds())
@@ -890,8 +936,9 @@ def login_post(lock):
                 name = data["title"]
                 magnet = data["magnet"]
                 description = data['description']
+                imdb_id = data['imdb_id']
                 update_log(f"{acc.split("|")}:Downloading {name}...")
-                video_path, url_poster = download_torrent(magnet, thumnbail)
+                video_path, url_poster = download_torrent(magnet, imdb_id, thumnbail)
                 update_log(f"{acc.split('|')[0]}:Download {name} success")
                 lang = acc.split("|")[3]
                 cat = acc.split("|")[4]
