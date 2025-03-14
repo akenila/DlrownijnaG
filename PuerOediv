@@ -265,33 +265,10 @@ def update_log(text):
 
 def upload_in_chunks(email, file_path, upload_url, update_token):  # 10MB chunks
     file_size = os.path.getsize(file_path)
-    file_size_str = str(file_size)
-    if len(file_size_str) <= 2:  # Nếu file < 100 bytes
-        chunk_size = 1000  # Mặc định nếu file quá nhỏ
+    if file_size > 10000000:
+        chunk_size = 10000000
     else:
-        # Lấy số hàng to thứ 2
-        magnitude = 10 ** (len(file_size_str) - 2)  # Đổi từ -2 thành -3 cho vị trí thứ 2
-        first_digits = file_size // magnitude
-        # Làm tròn xuống thành 1, 2, 5, 10, 20, 50, 100
-        if first_digits >= 100:
-            chunk_multiplier = 100
-        elif first_digits >= 50:
-            chunk_multiplier = 50
-        elif first_digits >= 20:
-            chunk_multiplier = 20
-        elif first_digits >= 10:
-            chunk_multiplier = 10
-        elif first_digits >= 5:
-            chunk_multiplier = 5
-        elif first_digits >= 2:
-            chunk_multiplier = 2
-        else:
-            chunk_multiplier = 1
-        chunk_size = chunk_multiplier * magnitude
-        
-        # Giới hạn chunk size tối đa 10MB
-        if chunk_size > 10000000:  # 10 triệu bytes (10MB)
-            chunk_size = 10000000
+        chunk_size = file_size
     offset = 0
     
     with open(file_path, 'rb') as f:
