@@ -1,3 +1,4 @@
+
 def check_subtitle_info(video_file):
     cmd = [
         "./ffmpeg/bin/ffprobe.exe", "-v", "quiet",
@@ -51,10 +52,13 @@ def add_subtitles_to_video(video_file, subtitle_file, output_file=None):
         raise FileNotFoundError(f"File phụ đề không tồn tại: {subtitle_file}")
     if output_file is None:
         output_file = str(video_path.parent / f"{video_path.stem}_subbed{video_path.suffix}")
+    subtitle_file = subtitle_file.replace("\\", "/")
+    video_file = video_file.replace("\\", "/")
+    print(f"Đang thêm phụ đề: {subtitle_file} vào video: {video_file}")
     cmd = [
         "./ffmpeg/bin/ffmpeg.exe", "-y",
         "-i", str(video_path),
-        "-vf", f"subtitles='{str(srt_path)}'",
+        "-vf", f"subtitles='{str(subtitle_file)}'",
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-threads", "0",
