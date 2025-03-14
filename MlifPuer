@@ -1,3 +1,4 @@
+
 def check_subtitle_info(video_file):
     cmd = [
         "./ffmpeg/bin/ffprobe.exe", "-v", "quiet",
@@ -424,10 +425,7 @@ def download_torrent(magnet_link, imdb_id, thumbnail=None):
                 "--always-resume=false",
                 "--check-integrity=false",
                 "--allow-overwrite=true",
-                "--timeout=600",
-                "--max-tries=5",
-                magnet_link], 
-                timeout=3600)
+                magnet_link])
     
     # Find video file in the unique directory
     video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv']
@@ -758,7 +756,7 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
             print(url_video)
             break
         except:
-            update_log(f'[{email}:{password}] video upload thành công {wait["body"]["progress"]}%\n')
+            update_log(f'[{email}:{password}] video Encoding thành công {wait["body"]["progress"]}%\n')
             pass
     update_log(f'[{email}:{password}] upload thành công video\n')
     update_log(f'[{email}:{password}] đang upload thumbnail\n')
@@ -925,8 +923,9 @@ def login_post(lock):
         while True:
             with lock:
                 if not acc_data:
-                    update_log("No more accounts available")
-                    return
+                    update_log("No more accounts available, waiting...")
+                    time.sleep(10)
+                    continue
                 acc = acc_data.pop()  # Remove and get account
                 update_log(f"Processing with account: {acc.split('|')[0]}")
             num_video = int(video_num_entry.get())
