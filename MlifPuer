@@ -896,6 +896,9 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
         except Exception as e:
             pass
         time.sleep(5)
+    if not torrent_link:
+        update_log(f"No torrent found for: {movie_title}, finding another movie...")
+        get_movie_with_torrent_and_subtitle(genre, lock)
     update_log(f"Found torrent: {movie_title}")
     # Step 3: Get subtitles from OpenSubtitle
     thumbnail_url = movie["thumbnail_url"]                                                                                                                                                 
