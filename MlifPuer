@@ -887,9 +887,10 @@ def get_movie_with_torrent_and_subtitle(genre, lock):
                         torrent_link = info.magnet_link
                         break
                 if torrent_link==None:
-                    info = torrent.info(torrent_id=results.items[0].torrent_id)
-                    torrent_link = info.magnet_link
-
+                    for item in results.items:
+                        info = torrent.info(torrent_id=item.torrent_id)
+                        torrent_link = info.magnet_link
+                        break
 
             break
         except Exception as e:
