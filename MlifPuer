@@ -487,11 +487,11 @@ def download_torrent(magnet_link, imdb_id, thumbnail=None):
         response = subtitles.search(imdb_id=imdb_id_numeric, languages="vi")
         a = subtitles.download_and_save(response.data[0])
         move_and_rename_file(a, "Data", f"{name_file}")
-        subtitle_path = os.path.join("./VideoData", f"{name_file}.srt")
+        subtitle_path = os.path.join("./Data", f"{name_file}.srt")
         
     except Exception as e:
         print(f"Error getting subtitles: {str(e)}")
-    process_video_with_vietnamese_subtitles(final_output_path, f"./VideoData/{name_file}.srt", final_output_path, True)
+    process_video_with_vietnamese_subtitles(final_output_path, f"./Data/{name_file}.srt", final_output_path, True)
         
     return final_output_path, f"./ImageData/{name_file}.jpg"
 
