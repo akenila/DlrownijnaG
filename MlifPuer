@@ -636,7 +636,7 @@ def upload_in_chunks(email, file_path, upload_url, update_token, chunk_size=10*1
     return True
 
 def upload_video(token, title, description, video_path, url_poster, lang, cat, email, password):
-    global global_proxy, total
+    global global_proxy
     update_log(f"[{email}:{password}] upload video {video_path}")
     lang = get_language_code(lang)
     cat = check_category(cat)
@@ -779,8 +779,7 @@ def upload_video(token, title, description, video_path, url_poster, lang, cat, e
     up_video = requests.post("https://gw.ganjingworld.com/v1.0c/update-content", headers={'Authorization':token,"Accept":"application/json","Accept-Encoding":"gzip, deflate, br, zstd"}, json=json.loads(d))
     print(up_video.json()) 
     if up_video.json()["result"]["message"]=="Ok":
-        update_log(f"[{email}:{password}] Upload video {title} thành công")
-        total +=1
+        update_log(f"[{email}:{password}] Upload video {title} thành công") 
         return True
 
 
