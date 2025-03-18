@@ -153,15 +153,6 @@ def get_login_token():
         list_login_token.append(token)
         return token
 def extract_youtube_channel_id(url):
-    """
-    Extract YouTube channel ID from various URL formats
-    
-    Args:
-        url (str): YouTube channel URL
-        
-    Returns:
-        str: YouTube channel ID or None if not found
-    """
     # Clean URL from any trailing parts
     if '/videos' in url:
         url = url.split('/videos')[0]
@@ -222,13 +213,13 @@ def get_content(data, dem):
             if '/videos' not in data:
                 channel_id = extract_youtube_channel_id(data)
                 if channel_id is None:
-                    save_error_to_file("Channel ID not found")
+                    save_error_to_file("Channel ID not found|"+data+"\n")
                     return None
                 data = data + '/videos'
             else:
                 channel_id = extract_youtube_channel_id(data)
                 if channel_id is None:
-                    save_error_to_file("Channel ID not found")
+                    save_error_to_file("Channel ID not found|"+data+"\n")
                     return None
             data = f"https://www.youtube.com/channel/{channel_id}/videos"
             channel_info = ydl.extract_info(data, download=False)
@@ -249,26 +240,38 @@ def get_content(data, dem):
             
             # Process requested number of videos
             for video in new_videos[:dem]:
-                video_id = video['id']
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
-                
-                # Get detailed video info
-                video_info = ydl.extract_info(video_url, download=False)
-                
-                video_links.append([
-                    video_url,
-                    video_info.get('title', ''),
-                    video_info.get('description', ''),
-                    video_info.get('thumbnail', '')
-                ])
-                
-                # Save processed video ID
-                with open(save_path, "a", encoding="utf-8") as f:
-                    f.write(video_id + "\n")
-                
-                dem -= 1
-                if dem == 0:
-                    break
+                try:
+                    video_id = video['id']
+                    video_url = f"https://www.youtube.com/watch?v={video_id}"
+                    
+                    # Get detailed video info
+                    video_info = ydl.extract_info(video_url, download=False)
+                    
+                    video_links.append([
+                        video_url,
+                        video_info.get('title', ''),
+                        video_info.get('description', ''),
+                        video_info.get('thumbnail', '')
+                    ])
+                    
+                    # Save processed video ID
+                    with open(save_path, "a", encoding="utf-8") as f:
+                        f.write(video_id + "\n")
+                    
+                    dem -= 1
+                    if dem == 0:
+                        break
+                except Exception as e:
+                    tb = e.__traceback__
+                    error_message = f"Exception: {e} | {data} | "
+                    while tb is not None:
+                        filename = tb.tb_frame.f_code.co_filename
+                        lineno = tb.tb_lineno
+                        function_name = tb.tb_frame.f_code.co_name
+                        error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
+                        tb = tb.tb_next
+                    save_error_to_file(error_message)
+                    continue
                     
             return video_links
             
