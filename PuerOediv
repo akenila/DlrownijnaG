@@ -152,7 +152,54 @@ def get_login_token():
         token = requests.post("https://gw.ganjingworld.com/v1.0c/auth/guest/registration", json={}, headers=h).json()["data"]["accessToken"]
         list_login_token.append(token)
         return token
+def extract_youtube_channel_id(url):
+    """
+    Extract YouTube channel ID from various URL formats
     
+    Args:
+        url (str): YouTube channel URL
+        
+    Returns:
+        str: YouTube channel ID or None if not found
+    """
+    # Clean URL from any trailing parts
+    if '/videos' in url:
+        url = url.split('/videos')[0]
+        
+    # Pattern for direct channel ID format
+    channel_pattern = r'youtube\.com\/channel\/([\w-]+)'
+    match = re.search(channel_pattern, url)
+    if match:
+        return match.group(1)  # Direct extraction for channel ID URLs
+    
+    # Pattern for @username format and custom URL format
+    username_pattern = r'youtube\.com\/@([\w\.-]+)'
+    custom_pattern = r'youtube\.com\/c\/([\w-]+)'
+    
+    if re.search(username_pattern, url):
+        # Already in @username format, use requests approach
+        try:
+            response = requests.get(url)
+            uid = re.search(r'channel_id=([\w-]+)', response.text)
+            return uid.group(1) if uid else None
+        except Exception as e:
+            print(f"Error extracting channel ID: {e}")
+            return None
+    
+    # For custom URL format, convert to @username format first
+    custom_match = re.search(custom_pattern, url)
+    if custom_match:
+        username = custom_match.group(1)
+        new_url = f"https://www.youtube.com/@{username}"
+        try:
+            response = requests.get(new_url)
+            uid = re.search(r'channel_id=([\w-]+)', response.text)
+            return uid.group(1) if uid else None
+        except Exception as e:
+            print(f"Error extracting channel ID: {e}")
+            return None
+    
+    return None
 
 def get_content(data, dem):
     global global_proxy
@@ -173,10 +220,17 @@ def get_content(data, dem):
         # Extract channel info
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             if '/videos' not in data:
-                channel_id = data.split('/')[-1].split('?')[0]
+                channel_id = extract_youtube_channel_id(data)
+                if channel_id is None:
+                    save_error_to_file("Channel ID not found")
+                    return None
                 data = data + '/videos'
             else:
-                channel_id = data.split('/')[-2]
+                channel_id = extract_youtube_channel_id(data)
+                if channel_id is None:
+                    save_error_to_file("Channel ID not found")
+                    return None
+            data = f"https://www.youtube.com/channel/{channel_id}/videos"
             channel_info = ydl.extract_info(data, download=False)
             save_path = f"./SaveData/{channel_id}.txt"
             if not os.path.isfile(save_path):
@@ -265,10 +319,33 @@ def update_log(text):
 
 def upload_in_chunks(email, file_path, upload_url, update_token):  # 10MB chunks
     file_size = os.path.getsize(file_path)
-    if file_size > 10000000:
-        chunk_size = 10000000
+    file_size_str = str(file_size)
+    if len(file_size_str) <= 2:  # Nếu file < 100 bytes
+        chunk_size = 1000  # Mặc định nếu file quá nhỏ
     else:
-        chunk_size = file_size
+        # Lấy số hàng to thứ 2
+        magnitude = 10 ** (len(file_size_str) - 2)  # Đổi từ -2 thành -3 cho vị trí thứ 2
+        first_digits = file_size // magnitude
+        # Làm tròn xuống thành 1, 2, 5, 10, 20, 50, 100
+        if first_digits >= 100:
+            chunk_multiplier = 100
+        elif first_digits >= 50:
+            chunk_multiplier = 50
+        elif first_digits >= 20:
+            chunk_multiplier = 20
+        elif first_digits >= 10:
+            chunk_multiplier = 10
+        elif first_digits >= 5:
+            chunk_multiplier = 5
+        elif first_digits >= 2:
+            chunk_multiplier = 2
+        else:
+            chunk_multiplier = 1
+        chunk_size = chunk_multiplier * magnitude
+        
+        # Giới hạn chunk size tối đa 10MB
+        if chunk_size > 10000000:  # 10 triệu bytes (10MB)
+            chunk_size = 10000000
     offset = 0
     
     with open(file_path, 'rb') as f:
@@ -335,9 +412,6 @@ def upload_in_chunks(email, file_path, upload_url, update_token):  # 10MB chunks
                         if chunk_size < 1024*1024:  # Don't go below 1MB
                             chunk_size = 1024*1024
                         break  # Break retry loop to re-read with smaller chunk size
-                    elif response.status_code == 404:
-                        update_log(f"[{email}] 404 Error: Resource not found")
-                        return False
                     else:
                         update_log(f"[{email}] Error uploading chunk: {response.status_code}")
                         retry_count += 1
