@@ -169,10 +169,13 @@ def extract_youtube_channel_id(url):
     
     if re.search(username_pattern, url):
         # Already in @username format, use requests approach
+        user_name = re.search(username_pattern, url).group(1)
         try:
-            response = requests.get(url)
-            uid = re.search(r'channel_id=([\w-]+)', response.text)
-            return uid.group(1) if uid else None
+            s = cloudscraper.create_scraper()
+            response = s.get(f"https://mixerno.space/api/youtube-channel-counter/search/@{user_name}").json()
+            if response['list']==[]:
+                return None
+            return response['list'][0][2]
         except Exception as e:
             print(f"Error extracting channel ID: {e}")
             return None
