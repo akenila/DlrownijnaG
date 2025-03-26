@@ -100,14 +100,14 @@ def download_video(url, email, password):
             
     except Exception as e:
         tb = e.__traceback__
-        error_message = f"Exception: {e} | "
+        error_message = f"Exception: {e} | {url} |"
         while tb is not None:
             filename = tb.tb_frame.f_code.co_filename
             lineno = tb.tb_lineno
             function_name = tb.tb_frame.f_code.co_name
             error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
             tb = tb.tb_next
-        save_error_to_file(error_message)
+        open("download.txt", "a", encoding="utf-8").write(error_message)
         return None
 
 def remove_hashtags(text):
@@ -169,21 +169,10 @@ def extract_youtube_channel_id(url):
     
     if re.search(username_pattern, url):
         # Already in @username format, use requests approach
-        user_name = re.search(username_pattern, url).group(1)
         try:
-            while True:
-                try:
-                    p = {
-                        "https": "http://0JeLKc:G69qYC@hub-us-8.litport.net:31682",
-                        "http": "http://0JeLKc:G69qYC@hub-us-8.litport.net:31682"
-                    }
-                    s = cloudscraper.create_scraper()
-                    response = s.get(f"https://mixerno.space/api/youtube-channel-counter/search/@{user_name}", proxies=p).json()
-                    if response['list']==[]:
-                        return None
-                    return response['list'][0][2]
-                except Exception as e:
-                    pass
+            response = requests.get(url)
+            uid = re.search(r'channel_id=([\w-]+)', response.text)
+            return uid.group(1) if uid else None
         except Exception as e:
             print(f"Error extracting channel ID: {e}")
             return None
