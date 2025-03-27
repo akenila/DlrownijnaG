@@ -70,7 +70,7 @@ def download_video(url, email, password):
     
     try:
         ydl_opts = {
-            'format': 'best[ext=mp4]/best',  # Đơn giản hóa lựa chọn format
+            'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best',  # Đơn giản hóa lựa chọn format
             'outtmpl': aaa,
             'ffmpeg_location': './ffmpeg/bin/ffmpeg.exe',
             'quiet': False,  # Hiển thị output để dễ debug
