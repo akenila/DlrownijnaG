@@ -70,21 +70,25 @@ def download_video(url, email, password):
     
     try:
         ydl_opts = {
-        'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best',
-        'outtmpl': aaa,
-        'ffmpeg_location': './ffmpeg/bin/ffmpeg.exe',
-        'quiet': True,
-        'verbose': True,
-        'ignoreerrors': True,
-        'restrictfilenames': False,
-        'noplaylist': True,
-        'windows_filenames': True,
-        'updatetime': False,
-        'writeinfojson': False,
-        'postprocessors': [],
-        'overwrites': True,
-        'merge_output_format': 'mp4',
-        'nocheckcertificate': True,
+            'format': 'best[ext=mp4]/best',  # Đơn giản hóa lựa chọn format
+            'outtmpl': aaa,
+            'ffmpeg_location': './ffmpeg/bin/ffmpeg.exe',
+            'quiet': False,  # Hiển thị output để dễ debug
+            'verbose': False,
+            'ignoreerrors': True,
+            'restrictfilenames': True,  # Tránh các ký tự đặc biệt
+            'noplaylist': True,
+            'windows_filenames': True,
+            'updatetime': False,
+            'writeinfojson': False,
+            'postprocessors': [],  # Không áp dụng post-processors
+            'overwrites': True,
+            'merge_output_format': 'mp4',
+            'nocheckcertificate': True,
+            'no_warnings': False,
+            'external_downloader_args': ['-loglevel', 'debug'],  # Debug lỗi tải
+            'retries': 10,  # Số lần thử lại
+            'fragment_retries': 10,  # Số lần thử lại tải từng phần
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
