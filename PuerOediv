@@ -247,7 +247,7 @@ def get_content(data, dem):
                          if video['id'] not in existing_ids]
             
             # Process requested number of videos
-            for video in new_videos[:dem]:
+            for video in new_videos:
                 try:
                     video_id = video['id']
                     video_url = f"https://www.youtube.com/watch?v={video_id}"
