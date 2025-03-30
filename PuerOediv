@@ -253,7 +253,15 @@ def get_content(data, dem):
                     video_url = f"https://www.youtube.com/watch?v={video_id}"
                     
                     # Get detailed video info
-                    video_info = ydl.extract_info(video_url, download=False)
+                    video_info = None
+                    while video_info is None:
+                        try:
+                            video_info = ydl.extract_info(video_url, download=False)
+                            break
+                        except Exception as e:
+                            print(f"Error extracting video info: {e}")
+                            time.sleep(5)
+
                     
                     video_links.append([
                         video_url,
