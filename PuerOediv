@@ -200,8 +200,37 @@ def extract_youtube_channel_id(url):
     
     return None
 
+class CustomLogger:
+    def __init__(self, log_file_path=None):
+        self.log_file_path = log_file_path
+        if log_file_path:
+            with open(log_file_path, 'w', encoding='utf-8') as f:
+                f.write("YT-DLP Log\n" + "-" * 50 + "\n")
+    
+    def debug(self, msg):
+        self._log(f"DEBUG: {msg}")
+    
+    def info(self, msg):
+        self._log(f"INFO: {msg}")
+    
+    def warning(self, msg):
+        self._log(f"WARNING: {msg}")
+    
+    def error(self, msg):
+        self._log(f"ERROR: {msg}")
+    
+    def _log(self, msg):
+        print(msg)  # Print to console
+        if self.log_file_path:
+            with open(self.log_file_path, 'a', encoding='utf-8') as f:
+                f.write(f"{msg}\n")
+
+# Create custom logger
+yt_dlp_custom_logger = CustomLogger(log_file_path="yt_dlp_log.txt")
+
+
 def get_content(data, dem):
-    global global_proxy
+    global global_proxy, yt_dlp_custom_logger
     
     # Check if URL has valid channel format
     if not any(x in data for x in ['/channel/', '/c/', '/user/', '/@']):
@@ -212,7 +241,8 @@ def get_content(data, dem):
         'quiet': True,
         'extract_flat': True,
         'force_generic_extractor': False,
-        'ignoreerrors': True
+        'ignoreerrors': True,
+        'logger': yt_dlp_custom_logger,
     }
     
     try:
@@ -253,14 +283,12 @@ def get_content(data, dem):
                     video_url = f"https://www.youtube.com/watch?v={video_id}"
                     
                     # Get detailed video info
-                    video_info = None
-                    while video_info is None:
-                        try:
-                            video_info = ydl.extract_info(video_url, download=False)
-                            break
-                        except Exception as e:
-                            print(f"Error extracting video info: {e}")
-                            time.sleep(5)
+                    try:
+                        video_info = ydl.extract_info(video_url, download=False)
+                        break
+                    except Exception as e:
+                        print(f"Error extracting video info: {e}")
+                        time.sleep(5)
 
                     
                     video_links.append([
