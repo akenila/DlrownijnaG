@@ -207,9 +207,6 @@ class CustomLogger:
             with open(log_file_path, 'w', encoding='utf-8') as f:
                 f.write("YT-DLP Log\n" + "-" * 50 + "\n")
     
-    def debug(self, msg):
-        self._log(f"DEBUG: {msg}")
-    
     def warning(self, msg):
         self._log(f"WARNING: {msg}")
     
@@ -220,9 +217,6 @@ class CustomLogger:
         if self.log_file_path:
             with open(self.log_file_path, 'a', encoding='utf-8') as f:
                 f.write(f"{msg}\n")
-
-# Create custom logger
-yt_dlp_custom_logger = CustomLogger(log_file_path="yt_dlp_log.txt")
 
 
 def get_content(data, dem):
@@ -238,7 +232,6 @@ def get_content(data, dem):
         'extract_flat': True,
         'force_generic_extractor': False,
         'ignoreerrors': True,
-        'logger': yt_dlp_custom_logger,
     }
     
     try:
@@ -279,13 +272,35 @@ def get_content(data, dem):
                     video_url = f"https://www.youtube.com/watch?v={video_id}"
                     
                     # Get detailed video info
+                    # Get detailed video info
                     try:
-                        video_info = ydl.extract_info(video_url, download=False)
-                        break
+                        # Create a specific logger for this video extraction
+                        if not os.path.exists(f"./Log"):
+                            os.makedirs(f"./Log")
+                        video_logger = CustomLogger(log_file_path=f"./Log/video_error_{video['id']}.log")
+                        
+                        # Use this logger for this specific extraction
+                        video_opts = ydl_opts.copy()
+                        video_opts['logger'] = video_logger
+                        
+                        with yt_dlp.YoutubeDL(video_opts) as video_ydl:
+                            video_info = video_ydl.extract_info(video_url, download=False)
+                            
+                        if video_info is None:
+                            # Log the failure with context
+                            error_msg = f"Video info extraction returned None: {video_url}"
+                            open("download_error.txt", "a", encoding="utf-8").write(f"{error_msg}\n")
+                            # Copy the specific log to the main error log
+                            with open(f"./Log/video_error_{video['id']}.log", "r", encoding="utf-8") as vlog:
+                                with open("yt_dlp_errors.log", "a", encoding="utf-8") as mainlog:
+                                    mainlog.write(f"\n===== ERROR FOR {video_url} AT {datetime.datetime.now()} =====\n")
+                                    mainlog.write(vlog.read())
+                                    mainlog.write("\n======================================================\n")
+                            continue
                     except Exception as e:
                         print(f"Error extracting video info: {e}")
                         time.sleep(5)
-
+                        continue
                     
                     video_links.append([
                         video_url,
