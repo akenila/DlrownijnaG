@@ -105,10 +105,6 @@ def download_video(url, email, password):
     except Exception as e:
         tb = e.__traceback__
         error_message = f"Exception: {e} | {url} |"
-        if "'NoneType' object has no attribute 'setdefault'" in str(e):
-            frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Tiến hành download lại\n')
-            return download_video(url, email, password)
         while tb is not None:
             filename = tb.tb_frame.f_code.co_filename
             lineno = tb.tb_lineno
@@ -116,6 +112,10 @@ def download_video(url, email, password):
             error_message += f"File: {filename}, Line: {lineno}, in {function_name}\n"
             tb = tb.tb_next
         open("download.txt", "a", encoding="utf-8").write(error_message)
+        if "'NoneType' object has no attribute 'setdefault'" in str(e):
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'[{email}:{password}] Tiến hành download lại\n')
+            return download_video(url, email, password)
         return None
 
 def remove_hashtags(text):
