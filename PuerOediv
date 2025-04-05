@@ -210,9 +210,6 @@ class CustomLogger:
     def debug(self, msg):
         self._log(f"DEBUG: {msg}")
     
-    def info(self, msg):
-        self._log(f"INFO: {msg}")
-    
     def warning(self, msg):
         self._log(f"WARNING: {msg}")
     
@@ -220,7 +217,6 @@ class CustomLogger:
         self._log(f"ERROR: {msg}")
     
     def _log(self, msg):
-        print(msg)  # Print to console
         if self.log_file_path:
             with open(self.log_file_path, 'a', encoding='utf-8') as f:
                 f.write(f"{msg}\n")
