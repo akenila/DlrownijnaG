@@ -211,7 +211,7 @@ class CustomLogger:
         self._log(f"WARNING: {msg}")
 
     def debug(self, msg):
-        pass
+        self._log(f"DEBUG: {msg}")
     
     def error(self, msg):
         self._log(f"ERROR: {msg}")
