@@ -92,13 +92,8 @@ def download_video(url, email, password):
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            filename = ydl.prepare_filename(ydl.extract_info(url, download=False))
             ydl.download([url])
-        download_path = "./VideoData"
-        for filename in os.listdir(download_path):
-            if name_file in filename and filename.endswith('.mp4'):
-                final_path = os.path.join(download_path, filename)
-                return final_path
+        return aaa  # Trả về đường dẫn video đã tải về
             
         return None
             
