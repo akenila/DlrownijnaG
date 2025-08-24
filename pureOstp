@@ -1,13 +1,10 @@
-# Cấu hình Eel
-import sys
+import eel
 import os
+import sys
+from pathlib import Path
+from Function import login_ganjingworld
 
-# 🔧 Fix sys.stdout/sys.stderr khi đóng gói
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, 'w')
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, 'w')
-
+# Cấu hình Eel
 eel.init('web')  # Thư mục chứa file HTML
 
 @eel.expose
@@ -372,7 +369,7 @@ def main():
         
         # Khởi động ứng dụng
         eel.start('post.html', 
-                  size=(1400, 900))
+                  size=(1400, 900), port=8080)
                   
     except Exception as e:
         print(f"❌ Error starting application: {e}")
