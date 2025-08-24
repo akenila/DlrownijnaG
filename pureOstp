@@ -1,11 +1,7 @@
-import eel
-import os
-import sys
-from pathlib import Path
-from Function import login_ganjingworld
 
 # Cấu hình Eel
-eel.init('web')  # Thư mục chứa file HTML
+import time, os
+eel.init(os.path.join(os.path.dirname(__file__), 'web/'))  # Thư mục chứa file HTML
 
 @eel.expose
 def get_app_info():
