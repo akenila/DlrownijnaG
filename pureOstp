@@ -364,7 +364,7 @@ def main():
         }
         
         # Khởi động ứng dụng
-        eel.start('./web/post.html', 
+        eel.start('post.html', 
                   size=(1400, 900), port=8080)
                   
     except Exception as e:
