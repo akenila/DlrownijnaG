@@ -375,5 +375,4 @@ def main():
         print(f"❌ Error starting application: {e}")
         print("Make sure you have Chrome browser installed")
 
-if __name__ == "__main__":
-    main()
+main()
