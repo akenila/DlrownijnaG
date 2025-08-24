@@ -1,8 +1,12 @@
 
-# Cấu hình Eel
-import time, os
-eel.init(os.path.join(os.path.dirname(__file__), 'web/'))  # Thư mục chứa file HTML
-
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+eel.init(resource_path("web"))
 @eel.expose
 def get_app_info():
     """Trả về thông tin ứng dụng"""
