@@ -1,0 +1,373 @@
+# Cấu hình Eel
+eel.init('web')  # Thư mục chứa file HTML
+
+@eel.expose
+def get_app_info():
+    """Trả về thông tin ứng dụng"""
+    return {
+        "name": "GanSync Post Pro",
+        "version": "1.0.0",
+        "description": "Professional Content Sync Platform"
+    }
+
+@eel.expose
+def test_connection(platform, credentials):
+    """Test kết nối đến platform"""
+    try:
+        # Simulate connection test
+        import time
+        time.sleep(2)
+        return {
+            "success": True,
+            "message": f"Successfully connected to {platform}",
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e),
+            "timestamp": time.time()
+        }
+
+@eel.expose
+def scan_platform(platform, target_url, cookies=None):
+    """Scan content từ platform"""
+    try:
+        # Simulate content scanning
+        import time
+        time.sleep(3)
+        
+        # Mock data
+        mock_content = [
+            {
+                "id": f"{platform}_1",
+                "title": f"Sample content from {platform}",
+                "type": "post",
+                "date": "2024-01-15",
+                "likes": 150,
+                "views": 1200
+            },
+            {
+                "id": f"{platform}_2", 
+                "title": f"Another post from {platform}",
+                "type": "article",
+                "date": "2024-01-14",
+                "likes": 89,
+                "views": 567
+            }
+        ]
+        
+        return {
+            "success": True,
+            "content": mock_content,
+            "count": len(mock_content),
+            "platform": platform
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e),
+            "platform": platform
+        }
+
+@eel.expose
+def save_workflow(workflow_data):
+    """Lưu workflow configuration"""
+    try:
+        # Simulate saving workflow
+        import json
+        import time
+        
+        # Create SaveData directory if not exists
+        save_dir = Path("SaveData")
+        save_dir.mkdir(exist_ok=True)
+        
+        # Save workflow to file
+        filename = f"workflow_{int(time.time())}.json"
+        filepath = save_dir / filename
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(workflow_data, f, ensure_ascii=False, indent=2)
+        
+        return {
+            "success": True,
+            "message": f"Workflow saved to {filename}",
+            "filepath": str(filepath)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+@eel.expose
+def load_workflow(filename):
+    """Load workflow từ file"""
+    try:
+        import json
+        
+        filepath = Path("SaveData") / filename
+        if not filepath.exists():
+            return {
+                "success": False,
+                "message": "Workflow file not found"
+            }
+        
+        with open(filepath, 'r', encoding='utf-8') as f:
+            workflow_data = json.load(f)
+        
+        return {
+            "success": True,
+            "workflow": workflow_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+@eel.expose
+def get_saved_workflows():
+    """Lấy danh sách workflow đã lưu"""
+    try:
+        save_dir = Path("SaveData")
+        if not save_dir.exists():
+            return {"workflows": []}
+        
+        workflows = []
+        for file in save_dir.glob("workflow_*.json"):
+            workflows.append({
+                "filename": file.name,
+                "size": file.stat().st_size,
+                "modified": file.stat().st_mtime
+            })
+        
+        return {"workflows": workflows}
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+@eel.expose
+def login_ganjing_node(email, password, node_id):
+    """Login vào GanJing World cho node cụ thể"""
+    try:
+        print(f"🔑 Attempting login for node {node_id} with email: {email}")
+        
+        # Sử dụng function từ Function.py
+        access_token = login_ganjingworld(email, password)
+        
+        if access_token:
+            print(f"✅ Login successful for node {node_id}")
+            return {
+                "success": True,
+                "message": "Đăng nhập thành công!",
+                "access_token": access_token,  # Trả về token đầy đủ
+                "status": "success"
+            }
+        else:
+            print(f"❌ Login failed for node {node_id}")
+            return {
+                "success": False,
+                "message": "Email không tồn tại hoặc mật khẩu sai",
+                "status": "failed"
+            }
+            
+    except Exception as e:
+        print(f"❌ Login error for node {node_id}: {e}")
+        return {
+            "success": False,
+            "message": f"Lỗi đăng nhập: {str(e)}",
+            "status": "error"
+        }
+
+@eel.expose
+def convert_facebook_cookies_to_token(cookies, node_id):
+    """Chuyển Facebook cookies thành access token"""
+    try:
+        print(f"🍪 Converting Facebook cookies to token for node {node_id}")
+        
+        # Import function từ Function.py
+        from Function import EAAGNO
+        
+        # Chuyển cookies thành token
+        access_token = EAAGNO(cookies)
+        
+        if access_token:
+            print(f"✅ Token conversion successful for node {node_id}")
+            return {
+                "success": True,
+                "message": "Chuyển đổi cookies thành công!",
+                "access_token": access_token,
+                "status": "success"
+            }
+        else:
+            print(f"❌ Token conversion failed for node {node_id}")
+            return {
+                "success": False,
+                "message": "Không thể chuyển đổi cookies thành token",
+                "status": "failed"
+            }
+            
+    except Exception as e:
+        print(f"❌ Token conversion error for node {node_id}: {e}")
+        return {
+            "success": False,
+            "message": f"Lỗi chuyển đổi: {str(e)}",
+            "status": "error"
+        }
+
+@eel.expose
+def scan_facebook_content(page_url, num_posts, access_token, cookies, node_id):
+    """Quét nội dung từ Facebook page"""
+    try:
+        print(f"📱 Scanning Facebook content for node {node_id}")
+        print(f"URL: {page_url}, Posts: {num_posts}")
+        
+        # Import function từ Function.py
+        from Function import get_facebook_content
+        
+        # Quét nội dung từ Facebook
+        content_list = get_facebook_content(page_url, num_posts, access_token, cookies)
+        
+        if content_list and len(content_list) > 0:
+            print(f"✅ Found {len(content_list)} posts for node {node_id}")
+            
+            # Format content for frontend
+            formatted_content = []
+            for i, content_item in enumerate(content_list):
+                text_content = content_item[0] if content_item[0] else "No text content"
+                image_path = content_item[1] if content_item[1] else None
+                
+                formatted_content.append({
+                    "id": f"fb_{node_id}_{i}",
+                    "title": text_content[:100] + "..." if len(text_content) > 100 else text_content,
+                    "content": text_content,
+                    "image": image_path,
+                    "type": "post",
+                    "platform": "facebook",
+                    "date": "2024-01-15",  # Mock date
+                    "likes": 0,
+                    "views": 0,
+                    "selected": False
+                })
+            
+            return {
+                "success": True,
+                "message": f"Quét thành công {len(formatted_content)} bài viết",
+                "content": formatted_content,
+                "count": len(formatted_content)
+            }
+        else:
+            print(f"❌ No content found for node {node_id}")
+            return {
+                "success": False,
+                "message": "Không tìm thấy bài viết nào",
+                "content": [],
+                "count": 0
+            }
+            
+    except Exception as e:
+        print(f"❌ Facebook scan error for node {node_id}: {e}")
+        return {
+            "success": False,
+            "message": f"Lỗi quét nội dung: {str(e)}",
+            "content": [],
+            "count": 0
+        }
+
+@eel.expose
+def post_to_ganjing(access_token, content, image_path, node_id):
+    """Đăng bài lên GanJing World"""
+    try:
+        print(f"📝 Posting to GanJing World for node {node_id}")
+        
+        # Validate input parameters
+        if not access_token:
+            print(f"❌ Missing access token for node {node_id}")
+            return {
+                "success": False,
+                "message": "Thiếu access token",
+                "status": "error"
+            }
+        
+        if not content:
+            print(f"❌ Missing content for node {node_id}")
+            return {
+                "success": False,
+                "message": "Thiếu nội dung bài viết",
+                "status": "error"
+            }
+        
+        # Safe content preview
+        content_preview = str(content)[:100] + "..." if len(str(content)) > 100 else str(content)
+        print(f"Content: {content_preview}")
+        print(f"Image: {image_path or 'None'}")
+        
+        # Import function từ Function.py
+        from Function import post_content
+        
+        # Đăng bài lên GanJing World
+        post_id = post_content(access_token, content, image_path)
+        
+        if post_id:
+            print(f"✅ Successfully posted to GanJing World for node {node_id}")
+            return {
+                "success": True,
+                "message": "Đăng bài thành công!",
+                "post_id": post_id,
+                "status": "success"
+            }
+        else:
+            print(f"❌ Failed to post to GanJing World for node {node_id}")
+            return {
+                "success": False,
+                "message": "Không thể đăng bài lên GanJing World",
+                "status": "failed"
+            }
+            
+    except Exception as e:
+        print(f"❌ Error posting to GanJing World for node {node_id}: {e}")
+        import traceback
+        traceback.print_exc()  # Print full error traceback
+        return {
+            "success": False,
+            "message": f"Lỗi đăng bài: {str(e)}",
+            "status": "error"
+        }
+
+def main():
+    """Main function để chạy ứng dụng"""
+    try:
+        # Kiểm tra file HTML tồn tại
+        html_file = Path("web/post.html")
+        if not html_file.exists():
+            print("❌ Error: post.html not found in web/ directory")
+            print("Please make sure post.html is in the web/ folder")
+            return
+        
+        print("🚀 Starting GanSync Post Pro...")
+        print("📱 Opening as desktop application...")
+        
+        # Cấu hình Eel
+        options = {
+            'mode': 'chrome',  # Sử dụng Chrome
+            'port': 8080,
+            'chrome_cmd_args': [
+                '--start-maximized',  # Mở cửa sổ full size
+                '--disable-web-security',  # Disable CORS cho development
+                '--disable-features=VizDisplayCompositor'
+            ]
+        }
+        
+        # Khởi động ứng dụng
+        eel.start('post.html', 
+                  size=(1400, 900))
+                  
+    except Exception as e:
+        print(f"❌ Error starting application: {e}")
+        print("Make sure you have Chrome browser installed")
+
+if __name__ == "__main__":
+    main()
